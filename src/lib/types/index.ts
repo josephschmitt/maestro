@@ -1,0 +1,97 @@
+export type { StatusGroup } from './status.js';
+export { STATUS_GROUPS } from './status.js';
+
+export interface Project {
+	id: string;
+	name: string;
+	agent_config: Record<string, unknown>;
+	base_path: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface LinkedDirectory {
+	id: string;
+	project_id: string;
+	path: string;
+	label: string;
+	is_repo: boolean;
+	created_at: string;
+}
+
+export interface Status {
+	id: string;
+	project_id: string;
+	group: import('./status.js').StatusGroup;
+	name: string;
+	sort_order: number;
+	is_default: boolean;
+	created_at: string;
+}
+
+export interface Card {
+	id: string;
+	project_id: string;
+	parent_id: string | null;
+	status_id: string;
+	title: string;
+	description: string;
+	labels: string[];
+	sort_order: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface OpenQuestion {
+	id: string;
+	card_id: string;
+	question: string;
+	resolution: string | null;
+	source: 'agent' | 'user';
+	resolved_by: 'agent' | 'user' | null;
+	created_at: string;
+	resolved_at: string | null;
+}
+
+export interface Conversation {
+	id: string;
+	card_id: string;
+	agent_type: string;
+	started_at: string;
+	ended_at: string | null;
+}
+
+export interface ConversationMessage {
+	id: string;
+	conversation_id: string;
+	role: 'user' | 'agent';
+	content: string;
+	timestamp: string;
+}
+
+export type AgentWorkspaceStatus = 'running' | 'paused' | 'reviewing' | 'completed' | 'failed';
+
+export interface AgentWorkspace {
+	id: string;
+	card_id: string;
+	agent_type: string;
+	status: AgentWorkspaceStatus;
+	session_id: string | null;
+	pid: number | null;
+	worktree_path: string | null;
+	branch_name: string | null;
+	review_count: number;
+	attached_at: string;
+	completed_at: string | null;
+}
+
+export interface Artifact {
+	id: string;
+	card_id: string;
+	name: string;
+	type: string;
+	path: string;
+	created_by: 'user' | 'agent';
+	created_at: string;
+	updated_at: string;
+}
