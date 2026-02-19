@@ -95,3 +95,29 @@ export interface Artifact {
 	created_at: string;
 	updated_at: string;
 }
+
+export interface ProjectSummary {
+	id: string;
+	name: string;
+	created_at: string;
+}
+
+export interface AgentProfileConfig {
+	name: string;
+	binary: string;
+	flags: string[];
+	custom_command: string | null;
+}
+
+export interface GlobalConfigResponse {
+	storage_base_path: string;
+	default_agent: string;
+	last_project_id: string;
+	agents: AgentProfileConfig[];
+}
+
+export interface ResolvedAgentConfigResponse {
+	agent: string;
+	model: string | null;
+	instructions: string | null;
+}
