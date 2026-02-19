@@ -6,7 +6,9 @@
 	import { initializeProject, hasProject } from '$lib/stores/project.js';
 	import { onMount } from 'svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { resolve } from '$app/paths';
 
 	let { children } = $props();
 	let createDialogOpen = $state(false);
@@ -31,8 +33,14 @@
 			<ProjectSwitcher onCreateClick={() => (createDialogOpen = true)} />
 		</nav>
 		{#if $hasProject}
-			<div class="border-t border-sidebar-border p-2">
-				<a href="/settings">
+			<div class="space-y-0.5 border-t border-sidebar-border p-2">
+				<a href={resolve('/board')}>
+					<Button variant="ghost" size="sm" class="w-full justify-start gap-2">
+						<LayoutDashboardIcon class="size-3.5" />
+						Board
+					</Button>
+				</a>
+				<a href={resolve('/settings')}>
 					<Button variant="ghost" size="sm" class="w-full justify-start gap-2">
 						<SettingsIcon class="size-3.5" />
 						Settings
