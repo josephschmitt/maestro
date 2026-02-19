@@ -1,8 +1,17 @@
 <script lang="ts">
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import ProjectSwitcher from '$lib/components/project-switcher.svelte';
+	import CreateProjectDialog from '$lib/components/dialogs/create-project-dialog.svelte';
+	import { initializeProject } from '$lib/stores/project.js';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
+	let createDialogOpen = $state(false);
+
+	onMount(() => {
+		initializeProject();
+	});
 </script>
 
 <svelte:head>
@@ -17,7 +26,7 @@
 			<span class="text-lg font-semibold">Maestro</span>
 		</div>
 		<nav class="flex-1 p-2">
-			<p class="px-2 py-1.5 text-sm text-muted-foreground">No projects yet</p>
+			<ProjectSwitcher onCreateClick={() => (createDialogOpen = true)} />
 		</nav>
 	</aside>
 
@@ -25,3 +34,5 @@
 		{@render children()}
 	</main>
 </div>
+
+<CreateProjectDialog bind:open={createDialogOpen} />
