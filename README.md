@@ -56,4 +56,4 @@ plan/
 
 ## License
 
-TBD
+[MIT](LICENSE)
