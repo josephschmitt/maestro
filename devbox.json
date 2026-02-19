@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "nodejs@latest",
+    "rustup@latest",
+    "pkg-config@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "rustup toolchain install stable --no-self-update 2>/dev/null",
+      "rustup default stable 2>/dev/null"
+    ],
+    "scripts": {
+      "dev": "npm run tauri dev",
+      "build": "npm run tauri build",
+      "test": "npm run test"
+    }
+  }
+}
