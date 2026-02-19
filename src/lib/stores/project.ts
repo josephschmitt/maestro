@@ -44,6 +44,9 @@ export async function initializeProject(): Promise<void> {
 				currentProject.set(null);
 			}
 		}
+	} catch {
+		projects.set([]);
+		currentProject.set(null);
 	} finally {
 		isLoading.set(false);
 	}
