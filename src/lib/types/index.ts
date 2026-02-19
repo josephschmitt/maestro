@@ -1,5 +1,6 @@
 export type { StatusGroup } from './status.js';
 export { STATUS_GROUPS } from './status.js';
+export type { CardWithStatus, CardProgress } from './card.js';
 
 export interface Project {
 	id: string;

@@ -29,6 +29,14 @@ pub fn run() {
             commands::statuses::update_status,
             commands::statuses::delete_status,
             commands::statuses::reorder_statuses,
+            commands::cards::create_card,
+            commands::cards::get_card,
+            commands::cards::update_card,
+            commands::cards::delete_card,
+            commands::cards::list_cards,
+            commands::cards::list_sub_cards,
+            commands::cards::move_card,
+            commands::cards::reorder_cards,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
