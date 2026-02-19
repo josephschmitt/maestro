@@ -71,13 +71,13 @@ fn project_dir(base_path: &std::path::Path, project_id: &str) -> std::path::Path
     base_path.join("projects").join(project_id)
 }
 
-fn open_project_db(base_path: &std::path::Path, project_id: &str) -> Result<DbConnection, String> {
+pub fn open_project_db(base_path: &std::path::Path, project_id: &str) -> Result<DbConnection, String> {
     let dir = project_dir(base_path, project_id);
     let db_path = dir.join("db.sqlite");
     DbConnection::open(&db_path)
 }
 
-fn seed_default_statuses(
+pub fn seed_default_statuses(
     conn: &rusqlite::Connection,
     project_id: &str,
 ) -> Result<(), String> {

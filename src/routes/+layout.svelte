@@ -3,8 +3,10 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import ProjectSwitcher from '$lib/components/project-switcher.svelte';
 	import CreateProjectDialog from '$lib/components/dialogs/create-project-dialog.svelte';
-	import { initializeProject } from '$lib/stores/project.js';
+	import { initializeProject, hasProject } from '$lib/stores/project.js';
 	import { onMount } from 'svelte';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import { Button } from '$lib/components/ui/button/index.js';
 
 	let { children } = $props();
 	let createDialogOpen = $state(false);
@@ -28,6 +30,16 @@
 		<nav class="flex-1 p-2">
 			<ProjectSwitcher onCreateClick={() => (createDialogOpen = true)} />
 		</nav>
+		{#if $hasProject}
+			<div class="border-t border-sidebar-border p-2">
+				<a href="/settings">
+					<Button variant="ghost" size="sm" class="w-full justify-start gap-2">
+						<SettingsIcon class="size-3.5" />
+						Settings
+					</Button>
+				</a>
+			</div>
+		{/if}
 	</aside>
 
 	<main class="flex flex-1 flex-col overflow-hidden">
