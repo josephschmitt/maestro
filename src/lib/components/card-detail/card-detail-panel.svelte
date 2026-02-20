@@ -81,7 +81,7 @@
 			<!-- Close button -->
 			<div class="flex items-center justify-end border-b border-border px-4 py-2">
 				<button
-					class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+					class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 					onclick={onclose}
 					aria-label="Close panel"
 				>
