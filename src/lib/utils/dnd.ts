@@ -8,15 +8,26 @@ export const DND_TYPE = 'kanban-card';
 
 export type DndItem = CardWithStatus & { isDndShadowItem?: boolean };
 
+export interface PendingMove {
+	cardId: string;
+	targetStatusId: string;
+	targetSortOrder: number;
+}
+
+export type GateCheck = (move: PendingMove) => Promise<boolean>;
+
 /**
  * Handle the finalize event from svelte-dnd-action.
  * Determines whether this is a same-column reorder or cross-column move
  * and calls the appropriate store function to persist to DB.
+ * If a gateCheck is provided, it's called before cross-column moves.
+ * If it returns false, the move is aborted.
  */
 export async function handleFinalize(
 	event: CustomEvent<DndEvent<DndItem>>,
 	statusId: string,
-	originalStatusId: (cardId: string) => string | undefined
+	originalStatusId: (cardId: string) => string | undefined,
+	gateCheck?: GateCheck
 ): Promise<void> {
 	const { items, info } = event.detail;
 	const draggedId = info.id;
@@ -32,6 +43,14 @@ export async function handleFinalize(
 		const cardIds = items.filter((item) => !item.isDndShadowItem).map((item) => item.id);
 		await reorderCards(statusId, cardIds);
 	} else {
+		if (gateCheck) {
+			const proceed = await gateCheck({
+				cardId: draggedId,
+				targetStatusId: statusId,
+				targetSortOrder: newIndex
+			});
+			if (!proceed) return;
+		}
 		// Cross-column move: move to new status at the target index
 		await moveCard(draggedId, statusId, newIndex);
 	}

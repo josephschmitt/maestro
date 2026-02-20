@@ -1,10 +1,11 @@
-import type { Card, Status, Project, GlobalConfigResponse } from '$lib/types/index.js';
+import type { Card, Status, Project, GlobalConfigResponse, OpenQuestion } from '$lib/types/index.js';
 import type { StatusGroup } from '$lib/types/status.js';
 
 export interface MockStore {
 	projects: Project[];
 	statuses: Status[];
 	cards: Card[];
+	questions: OpenQuestion[];
 	globalConfig: GlobalConfigResponse;
 }
 
@@ -50,6 +51,7 @@ function createSeedStore(): MockStore {
 		],
 		statuses,
 		cards,
+		questions: createSeedQuestions(cards),
 		globalConfig: {
 			storage_base_path: '/tmp/maestro',
 			default_agent: 'claude-code',
@@ -160,6 +162,34 @@ function createSeedCards(projectId: string, statuses: Status[], now: string): Ca
 			updated_at: now
 		};
 	});
+}
+
+function createSeedQuestions(cards: Card[]): OpenQuestion[] {
+	const inProgressCard = cards.find((c) => c.title === 'Build card detail panel');
+	if (!inProgressCard) return [];
+	const now = nowISO();
+	return [
+		{
+			id: newId(),
+			card_id: inProgressCard.id,
+			question: 'Should the panel support keyboard navigation between tabs?',
+			resolution: null,
+			source: 'user',
+			resolved_by: null,
+			created_at: now,
+			resolved_at: null
+		},
+		{
+			id: newId(),
+			card_id: inProgressCard.id,
+			question: 'What animation should the slide-over use?',
+			resolution: 'Use a simple slide from right with 200ms duration',
+			source: 'agent',
+			resolved_by: 'user',
+			created_at: now,
+			resolved_at: now
+		}
+	];
 }
 
 export function enrichCard(

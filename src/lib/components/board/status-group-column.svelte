@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Status, StatusGroup, CardWithStatus, CardProgress } from '$lib/types/index.js';
+	import type { GateCheck } from '$lib/utils/dnd.js';
 	import StatusColumn from './status-column.svelte';
 
 	let {
@@ -7,17 +8,21 @@
 		statuses,
 		cardsByStatus,
 		getProgress,
+		getUnresolvedCount,
 		onAddCard,
 		getOriginalStatusId,
-		onCardClick
+		onCardClick,
+		gateCheck
 	}: {
 		group: StatusGroup;
 		statuses: Status[];
 		cardsByStatus: Map<string, CardWithStatus[]>;
 		getProgress: (cardId: string) => CardProgress | null;
+		getUnresolvedCount: (cardId: string) => number;
 		onAddCard: (statusId: string, title: string) => void;
 		getOriginalStatusId: (cardId: string) => string | undefined;
 		onCardClick?: (cardId: string) => void;
+		gateCheck?: GateCheck;
 	} = $props();
 
 	const groupLabels: Record<StatusGroup, string> = {
@@ -52,9 +57,11 @@
 					{status}
 					cards={cardsByStatus.get(status.id) ?? []}
 					{getProgress}
+					{getUnresolvedCount}
 					{onAddCard}
 					{getOriginalStatusId}
 					{onCardClick}
+					{gateCheck}
 				/>
 			{/each}
 		</div>
