@@ -63,6 +63,10 @@ When working on a phase, read the overview and that phase's file for context.
 - Tailwind for all styling. No custom CSS files beyond `app.css`.
 - All interactive elements must have `tabindex` and appropriate `role`/`aria-*` attributes for accessibility.
 
+### Mock Backend
+
+- When adding a new Tauri command and its corresponding service function, also add a mock handler in `src/lib/services/mock/handlers/`. Update the dispatch map in `mock/index.ts`. This keeps browser-mode development (`npm run dev`) working.
+
 ### Rust / Tauri
 
 - Tauri commands are `#[tauri::command]` async functions in `src-tauri/src/commands/`.

@@ -6,9 +6,8 @@ function isTauriAvailable(): boolean {
 
 export async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
 	if (!isTauriAvailable()) {
-		throw new Error(
-			`Tauri runtime not available. Run "npm run tauri dev" to start the full desktop app.`
-		);
+		const { dispatchMockCommand } = await import('./mock/index.js');
+		return dispatchMockCommand<T>(command, args);
 	}
 	return invoke<T>(command, args);
 }
