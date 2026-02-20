@@ -6,10 +6,12 @@
 
 	let {
 		card,
-		progress
+		progress,
+		onclick
 	}: {
 		card: CardWithStatus & { isDndShadowItem?: boolean };
 		progress: CardProgress | null;
+		onclick?: (cardId: string) => void;
 	} = $props();
 
 	function labelColor(label: string): string {
@@ -47,6 +49,8 @@
 			: 'border-border hover:border-ring/50 hover:shadow-md'}"
 	role="button"
 	tabindex="0"
+	onclick={() => onclick?.(card.id)}
+	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onclick?.(card.id); } }}
 >
 	<div
 		class="flex shrink-0 cursor-grab items-center px-1 text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"

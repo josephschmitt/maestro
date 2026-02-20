@@ -8,7 +8,8 @@
 		cardsByStatus,
 		getProgress,
 		onAddCard,
-		getOriginalStatusId
+		getOriginalStatusId,
+		onCardClick
 	}: {
 		group: StatusGroup;
 		statuses: Status[];
@@ -16,6 +17,7 @@
 		getProgress: (cardId: string) => CardProgress | null;
 		onAddCard: (statusId: string, title: string) => void;
 		getOriginalStatusId: (cardId: string) => string | undefined;
+		onCardClick?: (cardId: string) => void;
 	} = $props();
 
 	const groupLabels: Record<StatusGroup, string> = {
@@ -52,6 +54,7 @@
 					{getProgress}
 					{onAddCard}
 					{getOriginalStatusId}
+					{onCardClick}
 				/>
 			{/each}
 		</div>
