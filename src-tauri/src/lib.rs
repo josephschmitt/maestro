@@ -53,6 +53,11 @@ pub fn run() {
             commands::directories::add_linked_directory,
             commands::directories::remove_linked_directory,
             commands::directories::list_linked_directories,
+            commands::conversations::create_conversation,
+            commands::conversations::list_conversations,
+            commands::conversations::create_message,
+            commands::conversations::list_messages,
+            commands::conversations::count_conversation_messages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

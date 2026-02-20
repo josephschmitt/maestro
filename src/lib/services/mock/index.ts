@@ -5,6 +5,7 @@ import * as config from './handlers/config.js';
 import * as questions from './handlers/questions.js';
 import * as artifacts from './handlers/artifacts.js';
 import * as directories from './handlers/directories.js';
+import * as conversations from './handlers/conversations.js';
 
 type Handler = (args: Record<string, unknown>) => unknown;
 
@@ -49,7 +50,13 @@ const handlers: Record<string, Handler> = {
 
 	add_linked_directory: directories.add_linked_directory,
 	remove_linked_directory: directories.remove_linked_directory,
-	list_linked_directories: directories.list_linked_directories
+	list_linked_directories: directories.list_linked_directories,
+
+	create_conversation: conversations.create_conversation,
+	list_conversations: conversations.list_conversations,
+	create_message: conversations.create_message,
+	list_messages: conversations.list_messages,
+	count_conversation_messages: conversations.count_conversation_messages
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {
