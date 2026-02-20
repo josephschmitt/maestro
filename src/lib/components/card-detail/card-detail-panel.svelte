@@ -12,6 +12,7 @@
 	import OpenQuestionsTab from './tabs/open-questions-tab.svelte';
 	import ArtifactsTab from './tabs/artifacts-tab.svelte';
 	import ConversationsTab from './tabs/conversations-tab.svelte';
+	import AgentTab from './tabs/agent-tab.svelte';
 
 	let {
 		cardId,
@@ -77,7 +78,7 @@
 		{ value: 'review', label: 'Review' }
 	];
 
-	const placeholderTabs = tabItems.filter((t) => t.value !== 'questions' && t.value !== 'artifacts' && t.value !== 'conversations');
+	const placeholderTabs = tabItems.filter((t) => t.value !== 'questions' && t.value !== 'artifacts' && t.value !== 'conversations' && t.value !== 'agent');
 </script>
 
 <SlideOver open={true} onclose={onclose}>
@@ -141,6 +142,12 @@
 						<Tabs.Content value="artifacts">
 							<div class="py-4">
 								<ArtifactsTab {cardId} />
+							</div>
+						</Tabs.Content>
+
+						<Tabs.Content value="agent">
+							<div class="py-4">
+								<AgentTab {cardId} statusGroup={card.status_group} />
 							</div>
 						</Tabs.Content>
 

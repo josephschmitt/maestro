@@ -2002,6 +2002,7 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
+ "libc",
  "rusqlite",
  "serde",
  "serde_json",
@@ -2010,6 +2011,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
  "tempfile",
+ "tokio",
  "toml 0.8.2",
  "uuid",
 ]
@@ -4037,6 +4039,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "windows-sys 0.61.2",
 ]

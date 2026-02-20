@@ -6,6 +6,7 @@ import * as questions from './handlers/questions.js';
 import * as artifacts from './handlers/artifacts.js';
 import * as directories from './handlers/directories.js';
 import * as conversations from './handlers/conversations.js';
+import * as agent from './handlers/agent.js';
 
 type Handler = (args: Record<string, unknown>) => unknown;
 
@@ -56,7 +57,13 @@ const handlers: Record<string, Handler> = {
 	list_conversations: conversations.list_conversations,
 	create_message: conversations.create_message,
 	list_messages: conversations.list_messages,
-	count_conversation_messages: conversations.count_conversation_messages
+	count_conversation_messages: conversations.count_conversation_messages,
+
+	launch_agent: agent.launch_agent,
+	send_agent_input: agent.send_agent_input,
+	stop_agent: agent.stop_agent,
+	list_workspaces: agent.list_workspaces,
+	get_workspace: agent.get_workspace
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {

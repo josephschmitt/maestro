@@ -1,4 +1,4 @@
-import type { Card, Status, Project, GlobalConfigResponse, OpenQuestion, Artifact, LinkedDirectory, Conversation, ConversationMessage } from '$lib/types/index.js';
+import type { Card, Status, Project, GlobalConfigResponse, OpenQuestion, Artifact, LinkedDirectory, Conversation, ConversationMessage, AgentWorkspace } from '$lib/types/index.js';
 import type { StatusGroup } from '$lib/types/status.js';
 
 export interface MockStore {
@@ -11,6 +11,7 @@ export interface MockStore {
 	linkedDirectories: LinkedDirectory[];
 	conversations: Conversation[];
 	conversationMessages: ConversationMessage[];
+	agentWorkspaces: AgentWorkspace[];
 	globalConfig: GlobalConfigResponse;
 }
 
@@ -62,6 +63,7 @@ function createSeedStore(): MockStore {
 		linkedDirectories: [],
 		conversations: [],
 		conversationMessages: [],
+		agentWorkspaces: [],
 		globalConfig: {
 			storage_base_path: '/tmp/maestro',
 			default_agent: 'claude-code',

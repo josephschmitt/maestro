@@ -1,9 +1,13 @@
 mod commands;
 mod config;
 mod db;
+pub mod executor;
 mod fs;
 
+use std::sync::Arc;
+
 use commands::config::ConfigState;
+use executor::AgentRegistry;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -15,6 +19,7 @@ pub fn run() {
             let config_state =
                 ConfigState::load().expect("failed to initialize global config");
             app.manage(config_state);
+            app.manage(Arc::new(AgentRegistry::new()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -58,6 +63,11 @@ pub fn run() {
             commands::conversations::create_message,
             commands::conversations::list_messages,
             commands::conversations::count_conversation_messages,
+            commands::agent::launch_agent,
+            commands::agent::send_agent_input,
+            commands::agent::stop_agent,
+            commands::agent::list_workspaces,
+            commands::agent::get_workspace,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
