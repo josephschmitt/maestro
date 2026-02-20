@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod db;
+mod fs;
 
 use commands::config::ConfigState;
 use tauri::Manager;
@@ -43,6 +44,11 @@ pub fn run() {
             commands::questions::unresolve_question,
             commands::questions::delete_question,
             commands::questions::count_unresolved_questions,
+            commands::artifacts::create_artifact,
+            commands::artifacts::read_artifact,
+            commands::artifacts::update_artifact,
+            commands::artifacts::delete_artifact,
+            commands::artifacts::list_artifacts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
