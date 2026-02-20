@@ -9,6 +9,7 @@
 	import { statuses as allStatuses } from '$lib/stores/statuses.js';
 	import { onMount } from 'svelte';
 	import XIcon from '@lucide/svelte/icons/x';
+	import OpenQuestionsTab from './tabs/open-questions-tab.svelte';
 
 	let {
 		cardId,
@@ -73,6 +74,8 @@
 		{ value: 'agent', label: 'Agent' },
 		{ value: 'review', label: 'Review' }
 	];
+
+	const placeholderTabs = tabItems.filter((t) => t.value !== 'questions');
 </script>
 
 <SlideOver open={true} onclose={onclose}>
@@ -121,7 +124,13 @@
 							{/each}
 						</Tabs.List>
 
-						{#each tabItems as tab (tab.value)}
+						<Tabs.Content value="questions">
+							<div class="py-4">
+								<OpenQuestionsTab {cardId} />
+							</div>
+						</Tabs.Content>
+
+						{#each placeholderTabs as tab (tab.value)}
 							<Tabs.Content value={tab.value}>
 								<div class="py-4">
 									<p class="text-sm text-muted-foreground">

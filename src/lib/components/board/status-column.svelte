@@ -5,22 +5,26 @@
 	import CardItem from './card-item.svelte';
 	import AddCardInline from './add-card-inline.svelte';
 	import { FLIP_DURATION_MS, DND_TYPE, handleFinalize } from '$lib/utils/dnd.js';
-	import type { DndItem } from '$lib/utils/dnd.js';
+	import type { DndItem, GateCheck } from '$lib/utils/dnd.js';
 
 	let {
 		status,
 		cards,
 		getProgress,
+		getUnresolvedCount,
 		onAddCard,
 		getOriginalStatusId,
-		onCardClick
+		onCardClick,
+		gateCheck
 	}: {
 		status: Status;
 		cards: CardWithStatus[];
 		getProgress: (cardId: string) => CardProgress | null;
+		getUnresolvedCount: (cardId: string) => number;
 		onAddCard: (statusId: string, title: string) => void;
 		getOriginalStatusId: (cardId: string) => string | undefined;
 		onCardClick?: (cardId: string) => void;
+		gateCheck?: GateCheck;
 	} = $props();
 
 	// eslint-disable-next-line svelte/prefer-writable-derived -- dndItems must be mutated by svelte-dnd-action on consider/finalize events
@@ -36,7 +40,7 @@
 
 	async function handleFinalizeEvent(event: CustomEvent<DndEvent<DndItem>>) {
 		dndItems = event.detail.items;
-		await handleFinalize(event, status.id, getOriginalStatusId);
+		await handleFinalize(event, status.id, getOriginalStatusId, gateCheck);
 	}
 </script>
 
@@ -59,7 +63,12 @@
 		onfinalize={handleFinalizeEvent}
 	>
 		{#each dndItems as card (card.id)}
-			<CardItem {card} progress={getProgress(card.id)} onclick={onCardClick} />
+			<CardItem
+				{card}
+				progress={getProgress(card.id)}
+				unresolvedQuestionCount={getUnresolvedCount(card.id)}
+				onclick={onCardClick}
+			/>
 		{/each}
 	</div>
 

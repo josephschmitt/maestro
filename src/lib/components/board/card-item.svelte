@@ -3,15 +3,18 @@
 	import { SHADOW_ITEM_MARKER_PROPERTY_NAME } from 'svelte-dnd-action';
 	import { dragHandle } from 'svelte-dnd-action';
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
+	import CircleHelpIcon from '@lucide/svelte/icons/circle-help';
 	import { focusable } from '$lib/focus/index.js';
 
 	let {
 		card,
 		progress,
+		unresolvedQuestionCount = 0,
 		onclick
 	}: {
 		card: CardWithStatus & { isDndShadowItem?: boolean };
 		progress: CardProgress | null;
+		unresolvedQuestionCount?: number;
 		onclick?: (cardId: string) => void;
 	} = $props();
 
@@ -83,19 +86,29 @@
 			</div>
 		{/if}
 
-		<div class="mt-1.5 flex items-center gap-2">
-			{#if progressPercent !== null}
-				<div class="flex flex-1 items-center gap-1.5">
-					<div class="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-						<div
-							class="h-full rounded-full bg-green-500 transition-all"
-							style="width: {progressPercent}%"
-						></div>
+		{#if progressPercent !== null || unresolvedQuestionCount > 0}
+			<div class="mt-1.5 flex items-center gap-2">
+				{#if progressPercent !== null}
+					<div class="flex flex-1 items-center gap-1.5">
+						<div class="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+							<div
+								class="h-full rounded-full bg-green-500 transition-all"
+								style="width: {progressPercent}%"
+							></div>
+						</div>
+						<span class="text-[10px] text-muted-foreground">{progress?.completed}/{progress?.total}</span>
 					</div>
-					<span class="text-[10px] text-muted-foreground">{progress?.completed}/{progress?.total}</span>
-				</div>
-			{/if}
-			<span class="text-[10px] text-muted-foreground" title="Open questions (coming soon)">0 questions</span>
-		</div>
+				{/if}
+				{#if unresolvedQuestionCount > 0}
+					<span
+						class="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+						title="{unresolvedQuestionCount} unresolved question{unresolvedQuestionCount === 1 ? '' : 's'}"
+					>
+						<CircleHelpIcon size={10} />
+						{unresolvedQuestionCount}
+					</span>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </div>

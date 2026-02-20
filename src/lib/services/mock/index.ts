@@ -2,6 +2,7 @@ import * as projects from './handlers/projects.js';
 import * as statuses from './handlers/statuses.js';
 import * as cards from './handlers/cards.js';
 import * as config from './handlers/config.js';
+import * as questions from './handlers/questions.js';
 
 type Handler = (args: Record<string, unknown>) => unknown;
 
@@ -29,7 +30,14 @@ const handlers: Record<string, Handler> = {
 
 	get_global_config: config.get_global_config,
 	set_last_project: config.set_last_project,
-	resolve_config: config.resolve_config
+	resolve_config: config.resolve_config,
+
+	create_question: questions.create_question,
+	list_questions: questions.list_questions,
+	resolve_question: questions.resolve_question,
+	unresolve_question: questions.unresolve_question,
+	delete_question: questions.delete_question,
+	count_unresolved_questions: questions.count_unresolved_questions
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {
