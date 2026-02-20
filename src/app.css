@@ -118,3 +118,11 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* svelte-dnd-action: style the element being dragged */
+#dnd-action-dragged-el {
+	opacity: 0.9;
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+	border-radius: var(--radius);
+	cursor: grabbing;
+}

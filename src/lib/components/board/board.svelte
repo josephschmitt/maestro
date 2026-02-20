@@ -19,6 +19,10 @@
 	async function handleAddCard(statusId: string, title: string) {
 		await addCard(title, { statusId });
 	}
+
+	function getOriginalStatusId(cardId: string): string | undefined {
+		return $cards.find((c) => c.id === cardId)?.status_id;
+	}
 </script>
 
 {#if !hasStatuses}
@@ -40,6 +44,7 @@
 					cardsByStatus={$cardsByStatus}
 					{getProgress}
 					onAddCard={handleAddCard}
+					{getOriginalStatusId}
 				/>
 			{/each}
 		</div>
