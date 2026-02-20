@@ -119,6 +119,10 @@
 	}
 }
 
+[data-tauri-drag-region] {
+	app-region: drag;
+}
+
 /* svelte-dnd-action: style the element being dragged */
 #dnd-action-dragged-el {
 	opacity: 0.9;

@@ -4,7 +4,7 @@
 	"identifier": "com.maestro.dev",
 	"build": {
 		"frontendDist": "../build",
-		"devUrl": "http://localhost:5173",
+		"devUrl": "http://mac-mini:5173",
 		"beforeDevCommand": "npm run dev",
 		"beforeBuildCommand": "npm run build"
 	},
@@ -12,6 +12,8 @@
 		"windows": [
 			{
 				"title": "Maestro",
+				"titleBarStyle": "Overlay",
+				"hiddenTitle": true,
 				"width": 1200,
 				"height": 800,
 				"minWidth": 800,

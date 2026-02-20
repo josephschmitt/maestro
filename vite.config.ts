@@ -6,8 +6,10 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	clearScreen: false,
 	server: {
+		host: true,
 		port: 5173,
-		strictPort: true
+		strictPort: true,
+		allowedHosts: ['mac-mini']
 	},
 	test: {
 		include: ['src/**/*.test.ts']
