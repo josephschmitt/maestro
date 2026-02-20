@@ -1,5 +1,7 @@
 <script lang="ts">
 	import StatusManager from '$lib/components/status-manager.svelte';
+	import LinkedDirectories from '$lib/components/settings/linked-directories.svelte';
+	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { currentProject } from '$lib/stores/project.js';
 </script>
 
@@ -23,6 +25,17 @@
 					board.
 				</p>
 				<StatusManager />
+			</section>
+
+			<Separator class="my-8" />
+
+			<section>
+				<h2 class="mb-4 text-base font-semibold">Linked Directories</h2>
+				<p class="mb-4 text-sm text-muted-foreground">
+					Link external directories (git repos, doc folders) to this project. These are used
+					as working directories for agents.
+				</p>
+				<LinkedDirectories />
 			</section>
 		</div>
 	</div>

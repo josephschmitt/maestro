@@ -10,6 +10,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let config_state =
                 ConfigState::load().expect("failed to initialize global config");
@@ -49,6 +50,9 @@ pub fn run() {
             commands::artifacts::update_artifact,
             commands::artifacts::delete_artifact,
             commands::artifacts::list_artifacts,
+            commands::directories::add_linked_directory,
+            commands::directories::remove_linked_directory,
+            commands::directories::list_linked_directories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

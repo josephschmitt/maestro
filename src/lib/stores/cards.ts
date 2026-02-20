@@ -10,8 +10,12 @@ import {
 	reorderCards as reorderCardsService
 } from '$lib/services/cards.js';
 import { currentProject } from './project.js';
+import { statuses } from './statuses.js';
+import { linkedDirectories } from './directories.js';
 
 export const cards = writable<CardWithStatus[]>([]);
+
+export const showLinkDirectoryPrompt = writable(false);
 
 export const cardsByStatus = derived(cards, ($cards) => {
 	const map = new Map<string, CardWithStatus[]>();
@@ -80,6 +84,15 @@ export async function moveCard(
 ): Promise<CardWithStatus> {
 	const project = get(currentProject);
 	if (!project) throw new Error('No project selected');
+
+	const targetStatus = get(statuses).find((s) => s.id === targetStatusId);
+	if (targetStatus?.group === 'Unstarted') {
+		const dirs = get(linkedDirectories);
+		if (dirs.length === 0) {
+			showLinkDirectoryPrompt.set(true);
+		}
+	}
+
 	const card = await moveCardService(project.id, id, targetStatusId, targetSortOrder);
 	await loadCards();
 	return card;

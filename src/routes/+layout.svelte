@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import ProjectSwitcher from '$lib/components/project-switcher.svelte';
 	import CreateProjectDialog from '$lib/components/dialogs/create-project-dialog.svelte';
+	import LinkDirectoryPrompt from '$lib/components/dialogs/link-directory-prompt.svelte';
 	import { initializeProject, hasProject } from '$lib/stores/project.js';
 	import { onMount } from 'svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
@@ -63,3 +64,4 @@
 </div>
 
 <CreateProjectDialog bind:open={createDialogOpen} />
+<LinkDirectoryPrompt />

@@ -4,6 +4,7 @@ import * as cards from './handlers/cards.js';
 import * as config from './handlers/config.js';
 import * as questions from './handlers/questions.js';
 import * as artifacts from './handlers/artifacts.js';
+import * as directories from './handlers/directories.js';
 
 type Handler = (args: Record<string, unknown>) => unknown;
 
@@ -44,7 +45,11 @@ const handlers: Record<string, Handler> = {
 	read_artifact: artifacts.read_artifact,
 	update_artifact: artifacts.update_artifact,
 	delete_artifact: artifacts.delete_artifact,
-	list_artifacts: artifacts.list_artifacts
+	list_artifacts: artifacts.list_artifacts,
+
+	add_linked_directory: directories.add_linked_directory,
+	remove_linked_directory: directories.remove_linked_directory,
+	list_linked_directories: directories.list_linked_directories
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {
