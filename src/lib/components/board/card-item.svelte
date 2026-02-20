@@ -3,6 +3,7 @@
 	import { SHADOW_ITEM_MARKER_PROPERTY_NAME } from 'svelte-dnd-action';
 	import { dragHandle } from 'svelte-dnd-action';
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
+	import { focusable } from '$lib/focus/index.js';
 
 	let {
 		card,
@@ -43,12 +44,13 @@
 </script>
 
 <div
-	class="group flex rounded-lg border bg-card shadow-sm transition-colors
+	class="group flex rounded-lg border bg-card shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none
 		{isShadow
 			? 'border-dashed border-primary/50 bg-primary/5 opacity-50'
 			: 'border-border hover:border-ring/50 hover:shadow-md'}"
 	role="button"
 	tabindex="0"
+	use:focusable={{ id: `card-${card.id}`, region: 'board', role: 'button' }}
 	onclick={() => onclick?.(card.id)}
 	onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onclick?.(card.id); } }}
 >
