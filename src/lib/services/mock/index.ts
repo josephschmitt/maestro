@@ -3,6 +3,7 @@ import * as statuses from './handlers/statuses.js';
 import * as cards from './handlers/cards.js';
 import * as config from './handlers/config.js';
 import * as questions from './handlers/questions.js';
+import * as artifacts from './handlers/artifacts.js';
 
 type Handler = (args: Record<string, unknown>) => unknown;
 
@@ -37,7 +38,13 @@ const handlers: Record<string, Handler> = {
 	resolve_question: questions.resolve_question,
 	unresolve_question: questions.unresolve_question,
 	delete_question: questions.delete_question,
-	count_unresolved_questions: questions.count_unresolved_questions
+	count_unresolved_questions: questions.count_unresolved_questions,
+
+	create_artifact: artifacts.create_artifact,
+	read_artifact: artifacts.read_artifact,
+	update_artifact: artifacts.update_artifact,
+	delete_artifact: artifacts.delete_artifact,
+	list_artifacts: artifacts.list_artifacts
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {
