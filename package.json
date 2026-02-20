@@ -45,6 +45,7 @@
 		"@tauri-apps/plugin-dialog": "^2.6.0",
 		"@tauri-apps/plugin-opener": "^2.5.3",
 		"clsx": "^2.1.1",
+		"marked": "^17.0.3",
 		"svelte-dnd-action": "^0.9.69",
 		"tailwind-merge": "^3.5.0",
 		"tailwind-variants": "^3.2.2",

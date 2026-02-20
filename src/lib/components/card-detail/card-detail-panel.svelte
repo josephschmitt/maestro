@@ -11,6 +11,7 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import OpenQuestionsTab from './tabs/open-questions-tab.svelte';
 	import ArtifactsTab from './tabs/artifacts-tab.svelte';
+	import ConversationsTab from './tabs/conversations-tab.svelte';
 
 	let {
 		cardId,
@@ -76,7 +77,7 @@
 		{ value: 'review', label: 'Review' }
 	];
 
-	const placeholderTabs = tabItems.filter((t) => t.value !== 'questions' && t.value !== 'artifacts');
+	const placeholderTabs = tabItems.filter((t) => t.value !== 'questions' && t.value !== 'artifacts' && t.value !== 'conversations');
 </script>
 
 <SlideOver open={true} onclose={onclose}>
@@ -124,6 +125,12 @@
 								<Tabs.Trigger value={tab.value}>{tab.label}</Tabs.Trigger>
 							{/each}
 						</Tabs.List>
+
+						<Tabs.Content value="conversations">
+							<div class="py-4">
+								<ConversationsTab {cardId} />
+							</div>
+						</Tabs.Content>
 
 						<Tabs.Content value="questions">
 							<div class="py-4">
