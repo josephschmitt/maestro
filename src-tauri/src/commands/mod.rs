@@ -7,3 +7,4 @@ pub mod directories;
 pub mod projects;
 pub mod questions;
 pub mod statuses;
+pub mod worktrees;

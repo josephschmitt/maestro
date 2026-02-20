@@ -47,6 +47,29 @@ const WORKSPACE_SELECT: &str = "\
            branch_name, review_count, attached_at, completed_at \
     FROM agent_workspaces";
 
+fn collect_artifact_contents(artifacts_dir: &std::path::Path) -> Vec<(String, String)> {
+    let mut contents = Vec::new();
+    if !artifacts_dir.exists() {
+        return contents;
+    }
+    if let Ok(entries) = std::fs::read_dir(artifacts_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    let name = path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+                    contents.push((name, content));
+                }
+            }
+        }
+    }
+    contents
+}
+
 #[tauri::command]
 pub async fn launch_agent(
     app: AppHandle,
@@ -55,6 +78,8 @@ pub async fn launch_agent(
     project_id: String,
     card_id: String,
     status_group: String,
+    worktree_path: Option<String>,
+    branch_name: Option<String>,
 ) -> Result<AgentWorkspace, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let db = open_project_db(&base_path, &project_id)?;
@@ -105,16 +130,39 @@ pub async fn launch_agent(
         parent_description,
     };
 
-    let working_dir = base_path
+    let working_dir = if let Some(ref wt) = worktree_path {
+        std::path::PathBuf::from(wt)
+    } else {
+        base_path
+            .join("projects")
+            .join(&project_id)
+            .join("artifacts")
+            .join(&card_id)
+    };
+
+    let working_dir_str = working_dir.to_string_lossy().to_string();
+
+    let artifacts_dir = base_path
         .join("projects")
         .join(&project_id)
         .join("artifacts")
         .join(&card_id);
 
-    let working_dir_str = working_dir.to_string_lossy().to_string();
+    let artifact_contents = if worktree_path.is_some() {
+        collect_artifact_contents(&artifacts_dir)
+    } else {
+        Vec::new()
+    };
 
     let agent_ctx = config.with_config(|c| {
-        assemble_context(c, &project_agent_config, &status_group, &card_info, &working_dir_str)
+        assemble_context(
+            c,
+            &project_agent_config,
+            &status_group,
+            &card_info,
+            &working_dir_str,
+            &artifact_contents,
+        )
     })?;
 
     let mut spawned = spawn_agent(&agent_ctx)?;
@@ -132,9 +180,9 @@ pub async fn launch_agent(
 
     let workspace = db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO agent_workspaces (id, card_id, agent_type, status, pid, attached_at) \
-             VALUES (?1, ?2, ?3, 'running', ?4, ?5)",
-            rusqlite::params![workspace_id, card_id, agent_ctx.binary, pid as i64, now],
+            "INSERT INTO agent_workspaces (id, card_id, agent_type, status, pid, worktree_path, branch_name, attached_at) \
+             VALUES (?1, ?2, ?3, 'running', ?4, ?5, ?6, ?7)",
+            rusqlite::params![workspace_id, card_id, agent_ctx.binary, pid as i64, worktree_path, branch_name, now],
         )
         .map_err(|e| format!("Failed to create workspace: {e}"))?;
 

@@ -7,6 +7,7 @@ import * as artifacts from './handlers/artifacts.js';
 import * as directories from './handlers/directories.js';
 import * as conversations from './handlers/conversations.js';
 import * as agent from './handlers/agent.js';
+import * as worktrees from './handlers/worktrees.js';
 
 type Handler = (args: Record<string, unknown>) => unknown;
 
@@ -63,7 +64,12 @@ const handlers: Record<string, Handler> = {
 	send_agent_input: agent.send_agent_input,
 	stop_agent: agent.stop_agent,
 	list_workspaces: agent.list_workspaces,
-	get_workspace: agent.get_workspace
+	get_workspace: agent.get_workspace,
+
+	generate_branch_name: worktrees.generate_branch_name,
+	create_worktree: worktrees.create_worktree,
+	check_worktree_exists: worktrees.check_worktree_exists,
+	get_card_worktree: worktrees.get_card_worktree
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {

@@ -12,10 +12,13 @@ import {
 import { currentProject } from './project.js';
 import { statuses } from './statuses.js';
 import { linkedDirectories } from './directories.js';
+import { runWorktreeFlow, type WorktreeFlowResult } from './worktree-flow.js';
 
 export const cards = writable<CardWithStatus[]>([]);
 
 export const showLinkDirectoryPrompt = writable(false);
+
+export const pendingWorktree = writable<Map<string, WorktreeFlowResult>>(new Map());
 
 export const cardsByStatus = derived(cards, ($cards) => {
 	const map = new Map<string, CardWithStatus[]>();
@@ -95,6 +98,20 @@ export async function moveCard(
 
 	const card = await moveCardService(project.id, id, targetStatusId, targetSortOrder);
 	await loadCards();
+
+	if (targetStatus?.group === 'Started') {
+		const movingCard = get(cards).find((c) => c.id === id);
+		if (movingCard) {
+			const result = await runWorktreeFlow(id, movingCard.title);
+			if (result) {
+				pendingWorktree.update((m) => {
+					m.set(id, result);
+					return new Map(m);
+				});
+			}
+		}
+	}
+
 	return card;
 }
 

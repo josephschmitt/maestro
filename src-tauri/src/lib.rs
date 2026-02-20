@@ -68,6 +68,10 @@ pub fn run() {
             commands::agent::stop_agent,
             commands::agent::list_workspaces,
             commands::agent::get_workspace,
+            commands::worktrees::generate_branch_name,
+            commands::worktrees::create_worktree,
+            commands::worktrees::check_worktree_exists,
+            commands::worktrees::get_card_worktree,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

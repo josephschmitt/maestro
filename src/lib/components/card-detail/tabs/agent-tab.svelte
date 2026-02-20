@@ -12,6 +12,9 @@
 	import AgentTerminal from '../agent-terminal.svelte';
 	import AgentControls from '../agent-controls.svelte';
 	import CircleDotIcon from '@lucide/svelte/icons/circle-dot';
+	import GitBranchIcon from '@lucide/svelte/icons/git-branch';
+	import FolderIcon from '@lucide/svelte/icons/folder';
+	import { pendingWorktree } from '$lib/stores/cards.js';
 
 	let {
 		cardId,
@@ -27,7 +30,8 @@
 	});
 
 	async function handleStart() {
-		await startAgent(cardId, statusGroup);
+		const wt = $pendingWorktree.get(cardId);
+		await startAgent(cardId, statusGroup, wt?.worktreePath, wt?.branchName);
 	}
 
 	async function handleStop() {
@@ -64,16 +68,34 @@
 
 {#if $activeWorkspace}
 	<div class="flex h-[400px] flex-col gap-3">
-		<div class="flex items-center justify-between">
-			<button
-				class="text-sm text-muted-foreground hover:text-foreground"
-				onclick={() => activeWorkspaceId.set(null)}
-			>
-				&larr; All Sessions
-			</button>
-			<span class={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass($activeWorkspace.status)}`}>
-				{$activeWorkspace.status}
-			</span>
+		<div class="flex flex-col gap-2">
+			<div class="flex items-center justify-between">
+				<button
+					class="text-sm text-muted-foreground hover:text-foreground"
+					onclick={() => activeWorkspaceId.set(null)}
+				>
+					&larr; All Sessions
+				</button>
+				<span class={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass($activeWorkspace.status)}`}>
+					{$activeWorkspace.status}
+				</span>
+			</div>
+			{#if $activeWorkspace.branch_name || $activeWorkspace.worktree_path}
+				<div class="flex flex-col gap-1 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+					{#if $activeWorkspace.branch_name}
+						<div class="flex items-center gap-1.5">
+							<GitBranchIcon class="size-3 shrink-0" />
+							<span class="truncate font-mono">{$activeWorkspace.branch_name}</span>
+						</div>
+					{/if}
+					{#if $activeWorkspace.worktree_path}
+						<div class="flex items-center gap-1.5">
+							<FolderIcon class="size-3 shrink-0" />
+							<span class="truncate font-mono">{$activeWorkspace.worktree_path}</span>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 
 		<div class="min-h-0 flex-1">
@@ -105,11 +127,19 @@
 						onclick={() => handleSelectWorkspace(ws.id)}
 					>
 						<CircleDotIcon size={12} class={ws.status === 'running' ? 'text-green-400' : 'text-muted-foreground'} />
-						<span class="flex-1 truncate">{ws.agent_type}</span>
+						<div class="min-w-0 flex-1">
+							<span class="truncate text-sm">{ws.agent_type}</span>
+							{#if ws.branch_name}
+								<div class="flex items-center gap-1 text-xs text-muted-foreground">
+									<GitBranchIcon class="size-3 shrink-0" />
+									<span class="truncate font-mono">{ws.branch_name}</span>
+								</div>
+							{/if}
+						</div>
 						<span class={`rounded-full px-2 py-0.5 text-xs ${statusBadgeClass(ws.status)}`}>
 							{ws.status}
 						</span>
-						<span class="text-xs text-muted-foreground">
+						<span class="shrink-0 text-xs text-muted-foreground">
 							{new Date(ws.attached_at).toLocaleString()}
 						</span>
 					</button>
