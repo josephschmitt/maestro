@@ -1,0 +1,196 @@
+use crate::config::global::GlobalConfig;
+use crate::config::resolution::{resolve_agent_config, ResolvedAgentConfig};
+
+#[derive(Debug)]
+pub struct AgentContext {
+    pub binary: String,
+    pub args: Vec<String>,
+    pub working_dir: String,
+    pub env: Vec<(String, String)>,
+    pub system_prompt: String,
+}
+
+pub struct CardInfo {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub parent_title: Option<String>,
+    pub parent_description: Option<String>,
+}
+
+pub fn assemble_context(
+    global_config: &GlobalConfig,
+    project_agent_config: &serde_json::Value,
+    status_group: &str,
+    card: &CardInfo,
+    working_dir: &str,
+) -> Result<AgentContext, String> {
+    let resolved = resolve_agent_config(global_config, project_agent_config, status_group);
+
+    let (binary, base_flags) = resolve_binary_and_flags(global_config, &resolved)?;
+
+    let system_prompt = build_system_prompt(&resolved, card);
+
+    let mut args = base_flags;
+    args.push("--print".to_string());
+    args.push(system_prompt.clone());
+
+    if let Some(ref model) = resolved.model {
+        args.push("--model".to_string());
+        args.push(model.clone());
+    }
+
+    let mut env = vec![("MAESTRO_CARD_ID".to_string(), card.id.clone())];
+    env.push(("MAESTRO_WORKING_DIR".to_string(), working_dir.to_string()));
+
+    Ok(AgentContext {
+        binary,
+        args,
+        working_dir: working_dir.to_string(),
+        env,
+        system_prompt,
+    })
+}
+
+fn resolve_binary_and_flags(
+    global_config: &GlobalConfig,
+    resolved: &ResolvedAgentConfig,
+) -> Result<(String, Vec<String>), String> {
+    let profile = global_config
+        .agents
+        .get(&resolved.agent)
+        .ok_or_else(|| format!("Agent profile '{}' not found in config", resolved.agent))?;
+
+    if let Some(ref custom_command) = profile.custom_command {
+        Ok((custom_command.clone(), vec![]))
+    } else {
+        Ok((profile.binary.clone(), profile.flags.clone()))
+    }
+}
+
+fn build_system_prompt(resolved: &ResolvedAgentConfig, card: &CardInfo) -> String {
+    let mut parts = Vec::new();
+
+    if let Some(ref instructions) = resolved.instructions {
+        parts.push(instructions.clone());
+    }
+
+    parts.push(format!("# Task: {}", card.title));
+
+    if !card.description.is_empty() {
+        parts.push(format!("\n## Description\n\n{}", card.description));
+    }
+
+    if let Some(ref parent_title) = card.parent_title {
+        parts.push(format!("\n## Parent Card: {}", parent_title));
+        if let Some(ref parent_desc) = card.parent_description {
+            if !parent_desc.is_empty() {
+                parts.push(parent_desc.clone());
+            }
+        }
+    }
+
+    parts.join("\n\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::global::{AgentProfile, DefaultsConfig, StatusGroupConfig};
+    use std::collections::HashMap;
+
+    fn test_config() -> GlobalConfig {
+        let mut agents = HashMap::new();
+        agents.insert(
+            "claude-code".to_string(),
+            AgentProfile {
+                binary: "claude".to_string(),
+                flags: vec!["--dangerously-skip-permissions".to_string()],
+                custom_command: None,
+            },
+        );
+
+        let mut status = HashMap::new();
+        status.insert(
+            "backlog".to_string(),
+            StatusGroupConfig {
+                agent: Some("claude-code".to_string()),
+                model: Some("sonnet".to_string()),
+                instructions: Some("You are in exploration mode.".to_string()),
+            },
+        );
+
+        GlobalConfig {
+            agents,
+            defaults: DefaultsConfig {
+                agent: "claude-code".to_string(),
+                last_project_id: String::new(),
+                status,
+            },
+            ..GlobalConfig::default()
+        }
+    }
+
+    #[test]
+    fn test_assemble_context_basic() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-123".to_string(),
+            title: "Build feature X".to_string(),
+            description: "Implement the new feature".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let ctx =
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work")
+                .unwrap();
+
+        assert_eq!(ctx.binary, "claude");
+        assert!(ctx.args.contains(&"--dangerously-skip-permissions".to_string()));
+        assert!(ctx.args.contains(&"--model".to_string()));
+        assert!(ctx.args.contains(&"sonnet".to_string()));
+        assert_eq!(ctx.working_dir, "/tmp/work");
+        assert!(ctx.system_prompt.contains("Build feature X"));
+        assert!(ctx.system_prompt.contains("exploration mode"));
+
+        let has_card_env = ctx.env.iter().any(|(k, v)| k == "MAESTRO_CARD_ID" && v == "card-123");
+        assert!(has_card_env);
+    }
+
+    #[test]
+    fn test_assemble_context_with_parent() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-456".to_string(),
+            title: "Sub-task A".to_string(),
+            description: "".to_string(),
+            parent_title: Some("Parent Feature".to_string()),
+            parent_description: Some("The parent description".to_string()),
+        };
+
+        let ctx =
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work")
+                .unwrap();
+
+        assert!(ctx.system_prompt.contains("Parent Card: Parent Feature"));
+        assert!(ctx.system_prompt.contains("The parent description"));
+    }
+
+    #[test]
+    fn test_assemble_context_missing_agent_profile() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-789".to_string(),
+            title: "Test".to_string(),
+            description: "".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let project_config = serde_json::json!({ "agent": "nonexistent" });
+        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("not found"));
+    }
+}
