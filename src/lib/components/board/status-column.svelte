@@ -12,13 +12,15 @@
 		cards,
 		getProgress,
 		onAddCard,
-		getOriginalStatusId
+		getOriginalStatusId,
+		onCardClick
 	}: {
 		status: Status;
 		cards: CardWithStatus[];
 		getProgress: (cardId: string) => CardProgress | null;
 		onAddCard: (statusId: string, title: string) => void;
 		getOriginalStatusId: (cardId: string) => string | undefined;
+		onCardClick?: (cardId: string) => void;
 	} = $props();
 
 	// eslint-disable-next-line svelte/prefer-writable-derived -- dndItems must be mutated by svelte-dnd-action on consider/finalize events
@@ -57,7 +59,7 @@
 		onfinalize={handleFinalizeEvent}
 	>
 		{#each dndItems as card (card.id)}
-			<CardItem {card} progress={getProgress(card.id)} />
+			<CardItem {card} progress={getProgress(card.id)} onclick={onCardClick} />
 		{/each}
 	</div>
 

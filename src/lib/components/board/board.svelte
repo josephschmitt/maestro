@@ -7,6 +7,12 @@
 	import StatusGroupColumn from './status-group-column.svelte';
 	import EmptyState from './empty-state.svelte';
 
+	let {
+		onCardClick
+	}: {
+		onCardClick?: (cardId: string) => void;
+	} = $props();
+
 	let hasStatuses = $derived($allStatuses.length > 0);
 	let totalCards = $derived($cards.filter((c) => c.parent_id === null).length);
 
@@ -45,6 +51,7 @@
 					{getProgress}
 					onAddCard={handleAddCard}
 					{getOriginalStatusId}
+					{onCardClick}
 				/>
 			{/each}
 		</div>
