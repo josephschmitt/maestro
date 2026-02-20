@@ -4,6 +4,7 @@
 	import { currentProject } from '$lib/stores/project.js';
 	import { loadStatuses } from '$lib/stores/statuses.js';
 	import { loadCards, cards } from '$lib/stores/cards.js';
+	import { loadLinkedDirectories } from '$lib/stores/directories.js';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -27,7 +28,7 @@
 	onMount(() => {
 		return currentProject.subscribe(async (project) => {
 			if (project) {
-				await Promise.all([loadStatuses(), loadCards()]);
+				await Promise.all([loadStatuses(), loadCards(), loadLinkedDirectories()]);
 			}
 			loaded = true;
 		});

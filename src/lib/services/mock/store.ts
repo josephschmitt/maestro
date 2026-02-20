@@ -1,4 +1,4 @@
-import type { Card, Status, Project, GlobalConfigResponse, OpenQuestion, Artifact } from '$lib/types/index.js';
+import type { Card, Status, Project, GlobalConfigResponse, OpenQuestion, Artifact, LinkedDirectory } from '$lib/types/index.js';
 import type { StatusGroup } from '$lib/types/status.js';
 
 export interface MockStore {
@@ -8,6 +8,7 @@ export interface MockStore {
 	questions: OpenQuestion[];
 	artifacts: Artifact[];
 	artifactContents: Map<string, string>;
+	linkedDirectories: LinkedDirectory[];
 	globalConfig: GlobalConfigResponse;
 }
 
@@ -56,6 +57,7 @@ function createSeedStore(): MockStore {
 		questions: createSeedQuestions(cards),
 		artifacts: [],
 		artifactContents: new Map(),
+		linkedDirectories: [],
 		globalConfig: {
 			storage_base_path: '/tmp/maestro',
 			default_agent: 'claude-code',
