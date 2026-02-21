@@ -4,18 +4,18 @@
 
 ## Overview
 
-Design before implementation. No exceptions.
+Flesh out ideas into architecture before committing to implementation. This is a pre-implementation skill — the goal is to explore the problem space and produce a design, not to build anything.
 
-**Core principle:** Explore the problem space, propose alternatives, get approval, then build.
+**Core principle:** Understand the problem, propose alternatives, document the architecture. No code, no scaffolding, no implementation.
 
 ## The Hard Gate
 
 ```
-Do NOT write any code, scaffold any project, or take any implementation action
-until you have presented a design and the user has approved it.
+Do NOT write any code, scaffold any project, or take any implementation action.
+This skill is purely for exploration and design.
 ```
 
-This applies to "simple" projects too. Straightforward work often masks costly assumptions.
+This applies even when the solution seems obvious. Straightforward work often masks costly assumptions.
 
 ## Process
 
@@ -28,17 +28,19 @@ This applies to "simple" projects too. Straightforward work often masks costly a
 
 ### 2. Ask Clarifying Questions
 
-Ask questions **one at a time** to understand:
+Surface all open questions early. Ask about:
 - Purpose and success criteria
 - Constraints (performance, compatibility, dependencies)
 - User preferences and non-negotiables
 
-When a question needs user input, surface it:
+Use `maestro-cli question` to surface questions that need user input:
 ```bash
 maestro-cli question "How should authentication be handled — JWT or session-based?"
+maestro-cli question "What are the performance requirements for the data pipeline?"
+maestro-cli question "Should this support offline mode from day one?"
 ```
 
-Do not stack multiple questions. Wait for each answer before proceeding.
+Ask as many questions as needed — the UI supports multiple open questions. Front-load questions rather than trickling them out one at a time.
 
 ### 3. Propose Alternatives
 
@@ -47,17 +49,17 @@ Present **2-3 approaches** with:
 - Trade-offs (complexity, performance, maintainability)
 - Your recommendation and why
 
-### 4. Present Design
+### 4. Present Architecture
 
-Walk through the design in sections scaled to complexity:
-- Architecture and component breakdown
+Walk through the architecture in sections scaled to complexity:
+- Component breakdown and responsibilities
 - Data flow and key interfaces
 - Error handling strategy
-- Testing approach
+- Open risks and unknowns
 
-Seek approval on each section before moving on.
+This is about producing a blueprint, not a finished product. Flag areas that need more investigation rather than making premature decisions.
 
-### 5. Document the Design
+### 5. Document the Architecture
 
 Save the approved design as an artifact:
 ```bash
@@ -74,7 +76,7 @@ maestro-cli log "Design approved — going with approach B (event-driven archite
 | Pattern | Problem |
 |---------|---------|
 | "Too simple to design" | Simple projects harbor unexamined assumptions |
-| Jumping to code after one question | Incomplete understanding leads to rework |
+| Jumping to code after surface-level questions | Incomplete understanding leads to rework |
 | Single approach presented | No trade-off analysis, no informed choice |
 | Design exists only in conversation | Lost context — save it as an artifact |
 
