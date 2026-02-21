@@ -8,10 +8,6 @@ Turn a design into a set of concrete, delegatable work items. Each work item sho
 
 **Core principle:** Every sub-task must be self-contained. If an agent needs to read the parent card or ask a question to understand what to do, the task description is incomplete.
 
-## When to Use
-
-After a design or architecture document exists and the decision to proceed has been made. This skill bridges the gap between "we know what to build" and "agents are building it."
-
 ## The Decomposition Process
 
 ### 1. Review the Design
