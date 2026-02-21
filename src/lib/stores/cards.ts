@@ -29,6 +29,8 @@ import type { RunningAgentChoice, GateDataSources } from '$lib/transitions/index
 
 export const cards = writable<CardWithStatus[]>([]);
 
+export const subCardsCache = writable<Map<string, CardWithStatus[]>>(new Map());
+
 export const showLinkDirectoryPrompt = writable(false);
 
 export const pendingWorktree = writable<Map<string, WorktreeFlowResult>>(new Map());
@@ -95,6 +97,17 @@ export async function removeCard(id: string): Promise<void> {
 	await loadCards();
 }
 
+function findCard(id: string): CardWithStatus | undefined {
+	const topLevel = get(cards).find((c) => c.id === id);
+	if (topLevel) return topLevel;
+	const cache = get(subCardsCache);
+	for (const subs of cache.values()) {
+		const found = subs.find((c) => c.id === id);
+		if (found) return found;
+	}
+	return undefined;
+}
+
 function getGateDataSources(): GateDataSources {
 	const project = get(currentProject);
 	return {
@@ -116,7 +129,7 @@ export async function getTransitionPlanForMove(
 	cardId: string,
 	targetStatusId: string
 ): Promise<{ plan: TransitionPlan; card: CardWithStatus } | null> {
-	const card = get(cards).find((c) => c.id === cardId);
+	const card = findCard(cardId);
 	if (!card) return null;
 
 	const targetStatus = get(statuses).find((s) => s.id === targetStatusId);
@@ -141,7 +154,7 @@ export async function moveCard(
 	const project = get(currentProject);
 	if (!project) throw new Error('No project selected');
 
-	const movingCard = get(cards).find((c) => c.id === id);
+	const movingCard = findCard(id);
 	const targetStatus = get(statuses).find((s) => s.id === targetStatusId);
 
 	const runningAgentChoice = get(lastRunningAgentChoice);
@@ -200,12 +213,33 @@ export async function reorderCards(
 export async function getSubCards(parentId: string): Promise<CardWithStatus[]> {
 	const project = get(currentProject);
 	if (!project) throw new Error('No project selected');
-	return listSubCardsService(project.id, parentId);
+	const result = await listSubCardsService(project.id, parentId);
+	subCardsCache.update((m) => {
+		m.set(parentId, result);
+		return new Map(m);
+	});
+	return result;
+}
+
+export async function loadSubCardsForAll(): Promise<void> {
+	const project = get(currentProject);
+	if (!project) return;
+	const topCards = get(cards);
+	const cache = new Map<string, CardWithStatus[]>();
+	await Promise.all(
+		topCards.map(async (card) => {
+			const subs = await listSubCardsService(project.id, card.id);
+			if (subs.length > 0) {
+				cache.set(card.id, subs);
+			}
+		})
+	);
+	subCardsCache.set(cache);
 }
 
 export function getCardProgress(parentId: string): CardProgress {
-	const $cards = get(cards);
-	const subCards = $cards.filter((c) => c.parent_id === parentId);
+	const cache = get(subCardsCache);
+	const subCards = cache.get(parentId) ?? [];
 	const completed = subCards.filter((c) => c.status_group === 'Completed').length;
 	return { completed, total: subCards.length };
 }

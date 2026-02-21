@@ -2,29 +2,44 @@
 	import type { CardWithStatus } from '$lib/types/index.js';
 	import StatusBadge from '$lib/components/status-badge.svelte';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
 
 	let {
 		subCards,
 		onaddsubcard,
-		onsubcardclick
+		onsubcardclick,
+		onfocus
 	}: {
 		subCards: CardWithStatus[];
 		onaddsubcard: () => void;
 		onsubcardclick: (cardId: string) => void;
+		onfocus?: () => void;
 	} = $props();
 </script>
 
 <div class="flex flex-col gap-2">
 	<div class="flex items-center justify-between">
 		<h3 class="text-sm font-medium text-foreground">Sub-cards</h3>
-		<button
-			class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-			onclick={onaddsubcard}
-			aria-label="Add sub-card"
-		>
-			<PlusIcon size={12} />
-			Add
-		</button>
+		<div class="flex items-center gap-1">
+			{#if onfocus}
+				<button
+					class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+					onclick={onfocus}
+					aria-label="Focus into sub-card board"
+				>
+					<LayoutGridIcon size={12} />
+					Focus
+				</button>
+			{/if}
+			<button
+				class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+				onclick={onaddsubcard}
+				aria-label="Add sub-card"
+			>
+				<PlusIcon size={12} />
+				Add
+			</button>
+		</div>
 	</div>
 
 	{#if subCards.length === 0}
