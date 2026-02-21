@@ -70,6 +70,20 @@ pub fn branch_slug_from_title(title: &str) -> String {
     truncate_slug(&slug, 40).to_string()
 }
 
+pub fn worktree_name_from_card(card_id: &str, title: &str) -> String {
+    let card_short = &card_id[..8.min(card_id.len())];
+    let slug = name_to_slug(title);
+    let slug_truncated = truncate_slug(&slug, 40);
+    format!("{card_short}-{slug_truncated}")
+}
+
+pub fn claude_worktree_path(repo_path: &str, worktree_name: &str) -> PathBuf {
+    Path::new(repo_path)
+        .join(".claude")
+        .join("worktrees")
+        .join(worktree_name)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -130,5 +144,32 @@ mod tests {
     fn test_branch_slug_from_title() {
         assert_eq!(branch_slug_from_title("Add Auth"), "add-auth");
         assert_eq!(branch_slug_from_title("Fix Bug #42"), "fix-bug-42");
+    }
+
+    #[test]
+    fn test_worktree_name_from_card() {
+        let name = worktree_name_from_card("a1b2c3d4-5678-abcd-efgh-ijklmnopqrst", "Add Auth");
+        assert_eq!(name, "a1b2c3d4-add-auth");
+    }
+
+    #[test]
+    fn test_worktree_name_from_card_long_title() {
+        let name = worktree_name_from_card(
+            "a1b2c3d4-5678-abcd-efgh-ijklmnopqrst",
+            "This is a very long title that should be truncated at forty characters",
+        );
+        assert!(name.starts_with("a1b2c3d4-"));
+        let slug_part = name.strip_prefix("a1b2c3d4-").unwrap();
+        assert!(slug_part.len() <= 40);
+        assert!(!slug_part.ends_with('-'));
+    }
+
+    #[test]
+    fn test_claude_worktree_path() {
+        let path = claude_worktree_path("/home/user/my-repo", "a1b2c3d4-add-auth");
+        assert_eq!(
+            path,
+            PathBuf::from("/home/user/my-repo/.claude/worktrees/a1b2c3d4-add-auth")
+        );
     }
 }

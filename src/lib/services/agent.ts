@@ -6,14 +6,16 @@ export async function launchAgent(
 	cardId: string,
 	statusGroup: string,
 	worktreePath?: string | null,
-	branchName?: string | null
+	branchName?: string | null,
+	repoPath?: string | null
 ): Promise<AgentWorkspace> {
 	return tauriInvoke<AgentWorkspace>('launch_agent', {
 		projectId,
 		cardId,
 		statusGroup,
 		worktreePath: worktreePath ?? null,
-		branchName: branchName ?? null
+		branchName: branchName ?? null,
+		repoPath: repoPath || null
 	});
 }
 

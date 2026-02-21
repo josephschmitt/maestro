@@ -31,7 +31,7 @@
 
 	async function handleStart() {
 		const wt = $pendingWorktree.get(cardId);
-		await startAgent(cardId, statusGroup, wt?.worktreePath, wt?.branchName);
+		await startAgent(cardId, statusGroup, wt?.worktreePath, wt?.branchName, wt?.repoPath);
 	}
 
 	async function handleStop() {

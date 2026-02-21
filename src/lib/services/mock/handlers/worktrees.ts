@@ -43,3 +43,12 @@ export function get_card_worktree(
 	}
 	return null;
 }
+
+export function get_claude_worktree_path(args: Record<string, unknown>): string {
+	const repoPath = args.repoPath as string;
+	const cardId = args.cardId as string;
+	const title = args.title as string;
+	const cardShort = cardId.slice(0, 8);
+	const slug = nameToSlug(title).slice(0, 40).replace(/-$/, '');
+	return `${repoPath}/.claude/worktrees/${cardShort}-${slug}`;
+}

@@ -75,6 +75,7 @@ pub fn run() {
             commands::worktrees::create_worktree,
             commands::worktrees::check_worktree_exists,
             commands::worktrees::get_card_worktree,
+            commands::worktrees::get_claude_worktree_path,
             commands::ipc::start_ipc_server,
             commands::ipc::stop_ipc_server,
         ])

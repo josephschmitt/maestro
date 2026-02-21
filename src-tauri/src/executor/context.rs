@@ -26,6 +26,7 @@ pub fn assemble_context(
     working_dir: &str,
     artifact_contents: &[(String, String)],
     socket_path: Option<&str>,
+    worktree_name: Option<&str>,
 ) -> Result<AgentContext, String> {
     let resolved = resolve_agent_config(global_config, project_agent_config, status_group);
 
@@ -40,6 +41,11 @@ pub fn assemble_context(
     if let Some(ref model) = resolved.model {
         args.push("--model".to_string());
         args.push(model.clone());
+    }
+
+    if let Some(name) = worktree_name {
+        args.push("--worktree".to_string());
+        args.push(name.to_string());
     }
 
     let mut env = vec![("MAESTRO_CARD_ID".to_string(), card.id.clone())];
@@ -167,13 +173,14 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None)
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None, None)
                 .unwrap();
 
         assert_eq!(ctx.binary, "claude");
         assert!(ctx.args.contains(&"--dangerously-skip-permissions".to_string()));
         assert!(ctx.args.contains(&"--model".to_string()));
         assert!(ctx.args.contains(&"sonnet".to_string()));
+        assert!(!ctx.args.contains(&"--worktree".to_string()));
         assert_eq!(ctx.working_dir, "/tmp/work");
         assert!(ctx.system_prompt.contains("Build feature X"));
         assert!(ctx.system_prompt.contains("exploration mode"));
@@ -194,7 +201,7 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None)
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None, None)
                 .unwrap();
 
         assert!(ctx.system_prompt.contains("Parent Card: Parent Feature"));
@@ -213,7 +220,7 @@ mod tests {
         };
 
         let project_config = serde_json::json!({ "agent": "nonexistent" });
-        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work", &[], None);
+        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work", &[], None, None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not found"));
     }
@@ -242,6 +249,7 @@ mod tests {
             "/tmp/work",
             &artifacts,
             None,
+            None,
         )
         .unwrap();
 
@@ -250,5 +258,33 @@ mod tests {
         assert!(ctx.system_prompt.contains("Implementation Plan"));
         assert!(ctx.system_prompt.contains("notes.md"));
         assert!(ctx.system_prompt.contains("Research notes here"));
+    }
+
+    #[test]
+    fn test_assemble_context_with_worktree_name() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-123".to_string(),
+            title: "Build feature X".to_string(),
+            description: "Implement the new feature".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let ctx = assemble_context(
+            &config,
+            &serde_json::json!({}),
+            "Backlog",
+            &card,
+            "/home/user/repo",
+            &[],
+            None,
+            Some("a1b2c3d4-build-feature-x"),
+        )
+        .unwrap();
+
+        assert!(ctx.args.contains(&"--worktree".to_string()));
+        assert!(ctx.args.contains(&"a1b2c3d4-build-feature-x".to_string()));
+        assert_eq!(ctx.working_dir, "/home/user/repo");
     }
 }

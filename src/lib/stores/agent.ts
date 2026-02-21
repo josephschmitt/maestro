@@ -44,7 +44,8 @@ export async function startAgent(
 	cardId: string,
 	statusGroup: string,
 	worktreePath?: string | null,
-	branchName?: string | null
+	branchName?: string | null,
+	repoPath?: string | null
 ): Promise<AgentWorkspace> {
 	const project = get(currentProject);
 	if (!project) throw new Error('No project selected');
@@ -54,7 +55,8 @@ export async function startAgent(
 		cardId,
 		statusGroup,
 		worktreePath,
-		branchName
+		branchName,
+		repoPath
 	);
 
 	await loadWorkspaces(cardId);

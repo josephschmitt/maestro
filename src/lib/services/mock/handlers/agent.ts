@@ -3,6 +3,8 @@ import { getStore, newId, nowISO } from '../store.js';
 
 export function launch_agent(args: Record<string, unknown>): AgentWorkspace {
 	const store = getStore();
+	const worktreePath = (args.worktreePath as string | null) ?? null;
+	const branchName = (args.branchName as string | null) ?? null;
 	const workspace: AgentWorkspace = {
 		id: newId(),
 		card_id: args.cardId as string,
@@ -10,8 +12,8 @@ export function launch_agent(args: Record<string, unknown>): AgentWorkspace {
 		status: 'running',
 		session_id: null,
 		pid: Math.floor(Math.random() * 90000) + 10000,
-		worktree_path: null,
-		branch_name: null,
+		worktree_path: worktreePath,
+		branch_name: branchName,
 		review_count: 0,
 		attached_at: nowISO(),
 		completed_at: null

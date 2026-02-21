@@ -4,13 +4,14 @@ import { linkedDirectories } from './directories.js';
 import { currentProject } from './project.js';
 import {
 	generateBranchName,
-	createWorktree,
-	getCardWorktree
+	getCardWorktree,
+	getClaudeWorktreePath
 } from '$lib/services/worktrees.js';
 
 export interface WorktreeFlowResult {
 	worktreePath: string;
 	branchName: string;
+	repoPath: string;
 }
 
 interface RepoSelectorState {
@@ -74,7 +75,7 @@ export async function runWorktreeFlow(
 
 	const existing = await getCardWorktree(project.id, cardId);
 	if (existing) {
-		return { worktreePath: existing.path, branchName: existing.branch };
+		return { worktreePath: existing.path, branchName: existing.branch, repoPath: '' };
 	}
 
 	const dirs = get(linkedDirectories);
@@ -99,12 +100,7 @@ export async function runWorktreeFlow(
 		return null;
 	}
 
-	const worktreePath = await createWorktree(
-		project.id,
-		cardId,
-		selectedRepo.path,
-		branchName
-	);
+	const worktreePath = await getClaudeWorktreePath(selectedRepo.path, cardId, cardTitle);
 
-	return { worktreePath, branchName };
+	return { worktreePath, branchName, repoPath: selectedRepo.path };
 }

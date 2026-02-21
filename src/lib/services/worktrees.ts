@@ -36,3 +36,11 @@ export async function getCardWorktree(
 ): Promise<WorktreeInfo | null> {
 	return tauriInvoke<WorktreeInfo | null>('get_card_worktree', { projectId, cardId });
 }
+
+export async function getClaudeWorktreePath(
+	repoPath: string,
+	cardId: string,
+	title: string
+): Promise<string> {
+	return tauriInvoke<string>('get_claude_worktree_path', { repoPath, cardId, title });
+}

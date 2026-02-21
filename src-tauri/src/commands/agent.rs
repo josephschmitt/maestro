@@ -10,6 +10,7 @@ use crate::executor::lifecycle::{start_lifecycle_monitor, stop_agent_process};
 use crate::executor::spawn::spawn_agent;
 use crate::executor::stream::{start_stderr_streaming, start_stdin_forwarding, start_stdout_streaming};
 use crate::executor::{AgentHandle, AgentRegistry};
+use crate::fs::worktrees as worktree_fs;
 use crate::ipc::server::IpcServer;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -81,6 +82,7 @@ pub async fn launch_agent(
     status_group: String,
     worktree_path: Option<String>,
     branch_name: Option<String>,
+    repo_path: Option<String>,
 ) -> Result<AgentWorkspace, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let db = open_project_db(&base_path, &project_id)?;
@@ -125,13 +127,22 @@ pub async fn launch_agent(
 
     let card_info = CardInfo {
         id: card_id.clone(),
-        title: card_title,
+        title: card_title.clone(),
         description: card_description,
         parent_title,
         parent_description,
     };
 
-    let working_dir = if let Some(ref wt) = worktree_path {
+    let is_implementation = repo_path.is_some();
+    let worktree_name = if is_implementation {
+        Some(worktree_fs::worktree_name_from_card(&card_id, &card_title))
+    } else {
+        None
+    };
+
+    let working_dir = if let Some(ref rp) = repo_path {
+        std::path::PathBuf::from(rp)
+    } else if let Some(ref wt) = worktree_path {
         std::path::PathBuf::from(wt)
     } else {
         base_path
@@ -139,6 +150,12 @@ pub async fn launch_agent(
             .join(&project_id)
             .join("artifacts")
             .join(&card_id)
+    };
+
+    let db_worktree_path = if let (Some(ref rp), Some(ref wt_name)) = (&repo_path, &worktree_name) {
+        Some(worktree_fs::claude_worktree_path(rp, wt_name).to_string_lossy().to_string())
+    } else {
+        worktree_path.clone()
     };
 
     let working_dir_str = working_dir.to_string_lossy().to_string();
@@ -149,7 +166,7 @@ pub async fn launch_agent(
         .join("artifacts")
         .join(&card_id);
 
-    let artifact_contents = if worktree_path.is_some() {
+    let artifact_contents = if is_implementation || worktree_path.is_some() {
         collect_artifact_contents(&artifacts_dir)
     } else {
         Vec::new()
@@ -171,6 +188,7 @@ pub async fn launch_agent(
             &working_dir_str,
             &artifact_contents,
             socket_path_str.as_deref(),
+            worktree_name.as_deref(),
         )
     })?;
 
@@ -191,7 +209,7 @@ pub async fn launch_agent(
         conn.execute(
             "INSERT INTO agent_workspaces (id, card_id, agent_type, status, pid, worktree_path, branch_name, attached_at) \
              VALUES (?1, ?2, ?3, 'running', ?4, ?5, ?6, ?7)",
-            rusqlite::params![workspace_id, card_id, agent_ctx.binary, pid as i64, worktree_path, branch_name, now],
+            rusqlite::params![workspace_id, card_id, agent_ctx.binary, pid as i64, db_worktree_path, branch_name, now],
         )
         .map_err(|e| format!("Failed to create workspace: {e}"))?;
 
