@@ -8,6 +8,8 @@ use std::sync::Arc;
 
 use commands::config::ConfigState;
 use executor::AgentRegistry;
+use executor::monitor::start_pid_monitor;
+use executor::reattach::startup_scan;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,8 +20,30 @@ pub fn run() {
         .setup(|app| {
             let config_state =
                 ConfigState::load().expect("failed to initialize global config");
+
+            let base_path = config_state
+                .with_config(|c| Ok(c.resolve_base_path()))
+                .expect("failed to resolve base path");
+
+            let registry = Arc::new(AgentRegistry::new());
+
+            let scan_result = startup_scan(&app.handle(), &base_path);
+            if !scan_result.reattached.is_empty() || !scan_result.failed.is_empty() {
+                eprintln!(
+                    "Startup scan: {} reattached, {} failed",
+                    scan_result.reattached.len(),
+                    scan_result.failed.len()
+                );
+            }
+
+            start_pid_monitor(
+                app.handle().clone(),
+                Arc::clone(&registry),
+                base_path,
+            );
+
             app.manage(config_state);
-            app.manage(Arc::new(AgentRegistry::new()));
+            app.manage(registry);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -68,6 +92,9 @@ pub fn run() {
             commands::agent::stop_agent,
             commands::agent::list_workspaces,
             commands::agent::get_workspace,
+            commands::agent::resume_agent,
+            commands::agent::list_running_workspaces,
+            commands::agent::stop_all_agents,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

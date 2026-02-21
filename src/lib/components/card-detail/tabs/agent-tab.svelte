@@ -7,11 +7,13 @@
 		loadWorkspaces,
 		startAgent,
 		stopCurrentAgent,
-		sendInput
+		sendInput,
+		resumeAgent
 	} from '$lib/stores/agent.js';
 	import AgentTerminal from '../agent-terminal.svelte';
 	import AgentControls from '../agent-controls.svelte';
 	import CircleDotIcon from '@lucide/svelte/icons/circle-dot';
+	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 
 	let {
 		cardId,
@@ -40,6 +42,10 @@
 		const ws = $activeWorkspace;
 		if (!ws) return;
 		sendInput(ws.id, text);
+	}
+
+	async function handleResume(workspaceId: string) {
+		await resumeAgent(workspaceId, cardId);
 	}
 
 	function handleSelectWorkspace(id: string) {
@@ -80,12 +86,23 @@
 			<AgentTerminal lines={$activeOutput} />
 		</div>
 
-		<AgentControls
-			workspace={$activeWorkspace}
-			onstart={handleStart}
-			onstop={handleStop}
-			onsend={handleSend}
-		/>
+		{#if $activeWorkspace.status === 'failed' && $activeWorkspace.session_id}
+			<button
+				class="inline-flex w-full items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+				onclick={() => $activeWorkspace && handleResume($activeWorkspace.id)}
+				aria-label="Resume agent"
+			>
+				<RotateCcwIcon size={14} class="mr-1" />
+				Resume Session
+			</button>
+		{:else}
+			<AgentControls
+				workspace={$activeWorkspace}
+				onstart={handleStart}
+				onstop={handleStop}
+				onsend={handleSend}
+			/>
+		{/if}
 	</div>
 {:else}
 	<div class="flex flex-col gap-3">
@@ -109,6 +126,15 @@
 						<span class={`rounded-full px-2 py-0.5 text-xs ${statusBadgeClass(ws.status)}`}>
 							{ws.status}
 						</span>
+						{#if ws.status === 'failed' && ws.session_id}
+							<button
+								class="rounded px-1.5 py-0.5 text-xs text-primary hover:bg-primary/10"
+								onclick={(e) => { e.stopPropagation(); handleResume(ws.id); }}
+								aria-label="Resume session"
+							>
+								Resume
+							</button>
+						{/if}
 						<span class="text-xs text-muted-foreground">
 							{new Date(ws.attached_at).toLocaleString()}
 						</span>

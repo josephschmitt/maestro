@@ -4,7 +4,8 @@ import {
 	launchAgent as launchAgentService,
 	stopAgent as stopAgentService,
 	listWorkspaces as listWorkspacesService,
-	sendAgentInput as sendAgentInputService
+	sendAgentInput as sendAgentInputService,
+	resumeAgent as resumeAgentService
 } from '$lib/services/agent.js';
 import { currentProject } from './project.js';
 
@@ -71,6 +72,20 @@ export async function stopCurrentAgent(workspaceId: string): Promise<void> {
 
 export async function sendInput(workspaceId: string, text: string): Promise<void> {
 	await sendAgentInputService(workspaceId, text);
+}
+
+export async function resumeAgent(workspaceId: string, cardId: string): Promise<AgentWorkspace> {
+	const project = get(currentProject);
+	if (!project) throw new Error('No project selected');
+
+	const workspace = await resumeAgentService(project.id, workspaceId);
+
+	await loadWorkspaces(cardId);
+	activeWorkspaceId.set(workspace.id);
+
+	await listenForOutput(workspace.id);
+
+	return workspace;
 }
 
 async function listenForOutput(workspaceId: string): Promise<void> {

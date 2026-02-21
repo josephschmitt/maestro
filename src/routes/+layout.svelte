@@ -4,20 +4,133 @@
 	import ProjectSwitcher from '$lib/components/project-switcher.svelte';
 	import CreateProjectDialog from '$lib/components/dialogs/create-project-dialog.svelte';
 	import LinkDirectoryPrompt from '$lib/components/dialogs/link-directory-prompt.svelte';
+	import QuitDialog from '$lib/components/dialogs/quit-dialog.svelte';
+	import AgentCrashedDialog from '$lib/components/dialogs/agent-crashed-dialog.svelte';
 	import { initializeProject, hasProject } from '$lib/stores/project.js';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { resolve } from '$app/paths';
 	import FocusRegion from '$lib/focus/region.svelte';
+	import {
+		listRunningWorkspaces,
+		stopAllAgents,
+		resumeAgent as resumeAgentService
+	} from '$lib/services/agent.js';
 
 	let { children } = $props();
 	let createDialogOpen = $state(false);
+	let quitDialogOpen = $state(false);
+	let quitRunningCount = $state(0);
+	let crashDialogOpen = $state(false);
+	let crashedAgents = $state<
+		Array<{
+			workspace_id: string;
+			project_id: string;
+			card_id: string;
+			session_id: string | null;
+		}>
+	>([]);
 
-	onMount(() => {
+	let unlistenCrash: (() => void) | null = null;
+	let unlistenStartupCrash: (() => void) | null = null;
+
+	onMount(async () => {
 		initializeProject();
+
+		try {
+			const { listen } = await import('@tauri-apps/api/event');
+
+			unlistenCrash = await listen<{ workspace_id: string; project_id: string }>(
+				'agent-crashed',
+				(event) => {
+					crashedAgents = [
+						...crashedAgents,
+						{
+							workspace_id: event.payload.workspace_id,
+							project_id: event.payload.project_id,
+							card_id: '',
+							session_id: null
+						}
+					];
+					crashDialogOpen = true;
+				}
+			);
+
+			unlistenStartupCrash = await listen<
+				Array<{
+					workspace_id: string;
+					project_id: string;
+					card_id: string;
+					session_id: string | null;
+				}>
+			>('agents-crashed-on-startup', (event) => {
+				crashedAgents = event.payload;
+				if (crashedAgents.length > 0) {
+					crashDialogOpen = true;
+				}
+			});
+		} catch {
+			// Not in Tauri environment
+		}
 	});
+
+	onDestroy(() => {
+		unlistenCrash?.();
+		unlistenStartupCrash?.();
+	});
+
+	async function handleQuitCheck() {
+		try {
+			const running = await listRunningWorkspaces();
+			if (running.length > 0) {
+				quitRunningCount = running.length;
+				quitDialogOpen = true;
+			} else {
+				await exitApp();
+			}
+		} catch {
+			await exitApp();
+		}
+	}
+
+	async function handleStopAll() {
+		await stopAllAgents();
+		quitDialogOpen = false;
+		await exitApp();
+	}
+
+	function handleKeepRunning() {
+		quitDialogOpen = false;
+		exitApp();
+	}
+
+	function handleCancelQuit() {
+		quitDialogOpen = false;
+	}
+
+	async function handleResumeCrashed(workspaceId: string, projectId: string) {
+		await resumeAgentService(projectId, workspaceId);
+		crashedAgents = crashedAgents.filter((a) => a.workspace_id !== workspaceId);
+		if (crashedAgents.length === 0) {
+			crashDialogOpen = false;
+		}
+	}
+
+	function handleDismissCrashed() {
+		crashedAgents = [];
+		crashDialogOpen = false;
+	}
+
+	async function exitApp() {
+		try {
+			const { exit } = await import('@tauri-apps/plugin-process');
+			await exit(0);
+		} catch {
+			// Not in Tauri
+		}
+	}
 </script>
 
 <svelte:head>
@@ -65,3 +178,16 @@
 
 <CreateProjectDialog bind:open={createDialogOpen} />
 <LinkDirectoryPrompt />
+<QuitDialog
+	bind:open={quitDialogOpen}
+	runningCount={quitRunningCount}
+	onstopall={handleStopAll}
+	onkeeprunning={handleKeepRunning}
+	oncancel={handleCancelQuit}
+/>
+<AgentCrashedDialog
+	bind:open={crashDialogOpen}
+	{crashedAgents}
+	onresume={handleResumeCrashed}
+	ondismiss={handleDismissCrashed}
+/>

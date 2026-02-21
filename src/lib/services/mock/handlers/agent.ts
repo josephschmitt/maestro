@@ -50,6 +50,47 @@ export function get_workspace(args: Record<string, unknown>): AgentWorkspace | u
 	return store.agentWorkspaces.find((w) => w.id === args.workspaceId);
 }
 
+export function resume_agent(args: Record<string, unknown>): AgentWorkspace {
+	const store = getStore();
+	const workspaceId = args.workspaceId as string;
+	const old = store.agentWorkspaces.find((w) => w.id === workspaceId);
+
+	const workspace: AgentWorkspace = {
+		id: newId(),
+		card_id: old?.card_id ?? '',
+		agent_type: old?.agent_type ?? 'claude-code',
+		status: 'running',
+		session_id: old?.session_id ?? null,
+		pid: Math.floor(Math.random() * 90000) + 10000,
+		worktree_path: old?.worktree_path ?? null,
+		branch_name: old?.branch_name ?? null,
+		review_count: 0,
+		attached_at: nowISO(),
+		completed_at: null
+	};
+	store.agentWorkspaces.push(workspace);
+
+	simulateMockOutput(workspace.id);
+
+	return workspace;
+}
+
+export function list_running_workspaces(_args: Record<string, unknown>): AgentWorkspace[] {
+	const store = getStore();
+	return store.agentWorkspaces.filter((w) => w.status === 'running');
+}
+
+export function stop_all_agents(_args: Record<string, unknown>): void {
+	const store = getStore();
+	const now = nowISO();
+	for (const ws of store.agentWorkspaces) {
+		if (ws.status === 'running') {
+			ws.status = 'failed';
+			ws.completed_at = now;
+		}
+	}
+}
+
 function simulateMockOutput(workspaceId: string): void {
 	const store = getStore();
 	const lines = [

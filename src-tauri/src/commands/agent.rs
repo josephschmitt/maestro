@@ -263,6 +263,259 @@ pub fn get_workspace(
     })
 }
 
+#[tauri::command]
+pub async fn resume_agent(
+    app: AppHandle,
+    config: State<'_, ConfigState>,
+    registry: State<'_, Arc<AgentRegistry>>,
+    project_id: String,
+    workspace_id: String,
+) -> Result<AgentWorkspace, String> {
+    let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
+    let db = open_project_db(&base_path, &project_id)?;
+
+    let (card_id, session_id, agent_type) = db.with_conn(|conn| {
+        conn.query_row(
+            "SELECT card_id, session_id, agent_type FROM agent_workspaces WHERE id = ?1",
+            rusqlite::params![workspace_id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?, row.get::<_, String>(2)?)),
+        )
+        .map_err(|e| format!("Workspace not found: {e}"))
+    })?;
+
+    let (card_title, card_description, parent_title, parent_description, project_agent_config, status_group) =
+        db.with_conn(|conn| {
+            let (title, description, parent_id, status_id): (String, String, Option<String>, String) = conn
+                .query_row(
+                    "SELECT c.title, c.description, c.parent_id, c.status_id FROM cards c WHERE c.id = ?1 AND c.project_id = ?2",
+                    rusqlite::params![card_id, project_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )
+                .map_err(|e| format!("Card not found: {e}"))?;
+
+            let group: String = conn
+                .query_row(
+                    "SELECT \"group\" FROM statuses WHERE id = ?1",
+                    rusqlite::params![status_id],
+                    |row| row.get(0),
+                )
+                .map_err(|e| format!("Status not found: {e}"))?;
+
+            let (parent_title, parent_description) = if let Some(ref pid) = parent_id {
+                let result: Result<(String, String), _> = conn.query_row(
+                    "SELECT title, description FROM cards WHERE id = ?1",
+                    rusqlite::params![pid],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                );
+                match result {
+                    Ok((t, d)) => (Some(t), Some(d)),
+                    Err(_) => (None, None),
+                }
+            } else {
+                (None, None)
+            };
+
+            let agent_config_json: String = conn
+                .query_row(
+                    "SELECT agent_config FROM projects WHERE id = ?1",
+                    rusqlite::params![project_id],
+                    |row| row.get(0),
+                )
+                .map_err(|e| format!("Project not found: {e}"))?;
+
+            let project_agent_config: serde_json::Value =
+                serde_json::from_str(&agent_config_json).unwrap_or_default();
+
+            Ok((title, description, parent_title, parent_description, project_agent_config, group))
+        })?;
+
+    let card_info = CardInfo {
+        id: card_id.clone(),
+        title: card_title,
+        description: card_description,
+        parent_title,
+        parent_description,
+    };
+
+    let working_dir = base_path
+        .join("projects")
+        .join(&project_id)
+        .join("artifacts")
+        .join(&card_id);
+
+    let working_dir_str = working_dir.to_string_lossy().to_string();
+
+    let mut agent_ctx = config.with_config(|c| {
+        assemble_context(c, &project_agent_config, &status_group, &card_info, &working_dir_str)
+    })?;
+
+    if let Some(ref sid) = session_id {
+        if let Some(pos) = agent_ctx.args.iter().position(|a| a == "--print") {
+            agent_ctx.args.remove(pos);
+            if pos < agent_ctx.args.len() {
+                agent_ctx.args.remove(pos);
+            }
+        }
+        agent_ctx.args.push("--resume".to_string());
+        agent_ctx.args.push(sid.clone());
+    }
+
+    let mut spawned = spawn_agent(&agent_ctx)?;
+
+    let stdout = spawned.child.stdout.take()
+        .ok_or_else(|| "Failed to capture stdout".to_string())?;
+    let stderr = spawned.child.stderr.take()
+        .ok_or_else(|| "Failed to capture stderr".to_string())?;
+    let stdin = spawned.child.stdin.take()
+        .ok_or_else(|| "Failed to capture stdin".to_string())?;
+
+    let new_workspace_id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    let pid = spawned.pid;
+
+    let workspace = db.with_conn(|conn| {
+        conn.execute(
+            "INSERT INTO agent_workspaces (id, card_id, agent_type, status, session_id, pid, attached_at) \
+             VALUES (?1, ?2, ?3, 'running', ?4, ?5, ?6)",
+            rusqlite::params![new_workspace_id, card_id, agent_type, session_id, pid as i64, now],
+        )
+        .map_err(|e| format!("Failed to create workspace: {e}"))?;
+
+        conn.query_row(
+            &format!("{WORKSPACE_SELECT} WHERE id = ?1"),
+            rusqlite::params![new_workspace_id],
+            row_to_workspace,
+        )
+        .map_err(|e| format!("Failed to read workspace: {e}"))
+    })?;
+
+    start_stdout_streaming(app.clone(), new_workspace_id.clone(), stdout);
+    start_stderr_streaming(app.clone(), new_workspace_id.clone(), stderr);
+
+    let (stdin_tx, stdin_rx) = tokio::sync::mpsc::channel::<String>(64);
+    start_stdin_forwarding(stdin, stdin_rx);
+
+    let handle = AgentHandle {
+        workspace_id: new_workspace_id.clone(),
+        stdin_tx,
+        pid,
+    };
+    registry.insert(handle);
+
+    start_lifecycle_monitor(
+        app,
+        Arc::clone(&registry),
+        spawned.child,
+        new_workspace_id,
+        project_id,
+        base_path,
+    );
+
+    Ok(workspace)
+}
+
+#[tauri::command]
+pub fn list_running_workspaces(
+    config: State<ConfigState>,
+) -> Result<Vec<AgentWorkspace>, String> {
+    let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
+    let projects_dir = base_path.join("projects");
+
+    if !projects_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let entries = std::fs::read_dir(&projects_dir)
+        .map_err(|e| format!("Failed to read projects directory: {e}"))?;
+
+    let mut all_running = Vec::new();
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let db_path = path.join("db.sqlite");
+        if !db_path.exists() {
+            continue;
+        }
+        let project_id = match path.file_name().and_then(|n| n.to_str()) {
+            Some(id) => id.to_string(),
+            None => continue,
+        };
+
+        if let Ok(db) = open_project_db(&base_path, &project_id) {
+            let _ = db.with_conn(|conn| {
+                let mut stmt = conn
+                    .prepare(&format!("{WORKSPACE_SELECT} WHERE status = 'running'"))
+                    .map_err(|e| format!("{e}"))?;
+
+                let rows = stmt
+                    .query_map([], |row| row_to_workspace(row))
+                    .map_err(|e| format!("{e}"))?;
+
+                for ws in rows.flatten() {
+                    all_running.push(ws);
+                }
+                Ok(())
+            });
+        }
+    }
+
+    Ok(all_running)
+}
+
+#[tauri::command]
+pub async fn stop_all_agents(
+    config: State<'_, ConfigState>,
+    registry: State<'_, Arc<AgentRegistry>>,
+) -> Result<(), String> {
+    let pids = registry.all_pids();
+
+    for pid in &pids {
+        stop_agent_process(*pid).await?;
+    }
+
+    let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
+    let projects_dir = base_path.join("projects");
+    if !projects_dir.exists() {
+        return Ok(());
+    }
+
+    let entries = std::fs::read_dir(&projects_dir)
+        .map_err(|e| format!("Failed to read projects directory: {e}"))?;
+
+    let completed_at = chrono::Utc::now().to_rfc3339();
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let db_path = path.join("db.sqlite");
+        if !db_path.exists() {
+            continue;
+        }
+        let project_id = match path.file_name().and_then(|n| n.to_str()) {
+            Some(id) => id.to_string(),
+            None => continue,
+        };
+
+        if let Ok(db) = open_project_db(&base_path, &project_id) {
+            let _ = db.with_conn(|conn| {
+                conn.execute(
+                    "UPDATE agent_workspaces SET status = 'failed', completed_at = ?1 WHERE status = 'running'",
+                    rusqlite::params![completed_at],
+                )
+                .map_err(|e| format!("{e}"))?;
+                Ok(())
+            });
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

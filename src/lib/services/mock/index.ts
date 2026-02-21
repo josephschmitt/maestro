@@ -63,7 +63,10 @@ const handlers: Record<string, Handler> = {
 	send_agent_input: agent.send_agent_input,
 	stop_agent: agent.stop_agent,
 	list_workspaces: agent.list_workspaces,
-	get_workspace: agent.get_workspace
+	get_workspace: agent.get_workspace,
+	resume_agent: agent.resume_agent,
+	list_running_workspaces: agent.list_running_workspaces,
+	stop_all_agents: agent.stop_all_agents
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {

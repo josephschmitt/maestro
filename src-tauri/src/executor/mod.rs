@@ -1,5 +1,7 @@
 pub mod context;
 pub mod lifecycle;
+pub mod monitor;
+pub mod reattach;
 pub mod spawn;
 pub mod stream;
 
@@ -42,5 +44,15 @@ impl AgentRegistry {
     pub fn has(&self, workspace_id: &str) -> bool {
         let handles = self.handles.lock().unwrap();
         handles.contains_key(workspace_id)
+    }
+
+    pub fn running_count(&self) -> usize {
+        let handles = self.handles.lock().unwrap();
+        handles.len()
+    }
+
+    pub fn all_pids(&self) -> Vec<u32> {
+        let handles = self.handles.lock().unwrap();
+        handles.values().map(|h| h.pid).collect()
     }
 }
