@@ -20,7 +20,7 @@ serde_json = "1"
 rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-tokio = { version = "1", features = ["process", "io-util", "sync", "time"] }
+tokio = { version = "1", features = ["process", "io-util", "sync", "time", "net", "rt", "macros"] }
 libc = "0.2"
 toml = "0.8"
 dirs = "5"

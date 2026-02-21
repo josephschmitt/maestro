@@ -10,6 +10,7 @@ use crate::executor::lifecycle::{start_lifecycle_monitor, stop_agent_process};
 use crate::executor::spawn::spawn_agent;
 use crate::executor::stream::{start_stderr_streaming, start_stdin_forwarding, start_stdout_streaming};
 use crate::executor::{AgentHandle, AgentRegistry};
+use crate::ipc::server::IpcServer;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AgentWorkspace {
@@ -154,6 +155,13 @@ pub async fn launch_agent(
         Vec::new()
     };
 
+    let socket_path = IpcServer::socket_path(&project_id);
+    let socket_path_str = if socket_path.exists() {
+        Some(socket_path.to_string_lossy().to_string())
+    } else {
+        None
+    };
+
     let agent_ctx = config.with_config(|c| {
         assemble_context(
             c,
@@ -162,6 +170,7 @@ pub async fn launch_agent(
             &card_info,
             &working_dir_str,
             &artifact_contents,
+            socket_path_str.as_deref(),
         )
     })?;
 
