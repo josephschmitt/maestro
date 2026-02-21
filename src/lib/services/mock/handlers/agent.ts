@@ -60,7 +60,7 @@ export function resume_agent(args: Record<string, unknown>): AgentWorkspace {
 		card_id: (args.cardId as string) || oldWs?.card_id || '',
 		agent_type: oldWs?.agent_type || 'claude-code',
 		status: 'running',
-		session_id: oldWs?.session_id,
+		session_id: oldWs?.session_id ?? null,
 		pid: Math.floor(Math.random() * 90000) + 10000,
 		worktree_path: oldWs?.worktree_path ?? null,
 		branch_name: oldWs?.branch_name ?? null,

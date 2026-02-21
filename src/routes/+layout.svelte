@@ -76,21 +76,19 @@
 				}
 			);
 
-			cleanupFns.push(unlistenCrashed, unlistenStartupCrash);
+			const { getCurrentWindow } = await import('@tauri-apps/api/window');
+			const unlistenClose = await getCurrentWindow().onCloseRequested(async (event) => {
+				const running = await listRunningWorkspaces();
+				if (running.length > 0) {
+					event.preventDefault();
+					quitRunningCount = running.length;
+					quitDialogOpen = true;
+				}
+			});
+
+			cleanupFns.push(unlistenCrashed, unlistenStartupCrash, unlistenClose);
 		} catch {
 			// Not in Tauri environment
-		}
-	}
-
-	async function handleQuitCheck() {
-		try {
-			const running = await listRunningWorkspaces();
-			if (running.length > 0) {
-				quitRunningCount = running.length;
-				quitDialogOpen = true;
-			}
-		} catch {
-			// ignore
 		}
 	}
 
@@ -107,8 +105,10 @@
 		quitDialogOpen = false;
 	}
 
-	function handleResumeCrashed(workspaceId: string, _projectId: string) {
-		const agent = crashedAgents.find((a) => a.workspace_id === workspaceId);
+	function handleResumeCrashed(workspaceId: string, projectId: string) {
+		const agent = crashedAgents.find(
+			(a) => a.workspace_id === workspaceId && a.project_id === projectId
+		);
 		if (agent?.card_id) {
 			resumeAgent(workspaceId, agent.card_id);
 		}
