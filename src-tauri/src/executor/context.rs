@@ -27,12 +27,13 @@ pub fn assemble_context(
     artifact_contents: &[(String, String)],
     socket_path: Option<&str>,
     worktree_name: Option<&str>,
+    status_prompts: &[String],
 ) -> Result<AgentContext, String> {
     let resolved = resolve_agent_config(global_config, project_agent_config, status_group);
 
     let (binary, base_flags) = resolve_binary_and_flags(global_config, &resolved)?;
 
-    let system_prompt = build_system_prompt(&resolved, card, artifact_contents, socket_path.is_some());
+    let system_prompt = build_system_prompt(&resolved, card, artifact_contents, socket_path.is_some(), status_prompts);
 
     let mut args = base_flags;
     args.push("--print".to_string());
@@ -82,11 +83,31 @@ fn resolve_binary_and_flags(
 
 const MAESTRO_SKILL: &str = include_str!("../../../assets/maestro-skill.md");
 
+const PROMPT_BRAINSTORMING: &str = include_str!("../../../assets/status-prompts/brainstorming.md");
+const PROMPT_TDD: &str = include_str!("../../../assets/status-prompts/tdd.md");
+const PROMPT_DEBUGGING: &str = include_str!("../../../assets/status-prompts/systematic-debugging.md");
+const PROMPT_VERIFICATION: &str = include_str!("../../../assets/status-prompts/verification.md");
+const PROMPT_CODE_REVIEW: &str = include_str!("../../../assets/status-prompts/code-review.md");
+const PROMPT_IMPLEMENTATION_PLANNING: &str = include_str!("../../../assets/status-prompts/implementation-planning.md");
+
+fn get_status_prompt_content(prompt_id: &str) -> Option<&'static str> {
+    match prompt_id {
+        "brainstorming" => Some(PROMPT_BRAINSTORMING),
+        "tdd" => Some(PROMPT_TDD),
+        "systematic-debugging" => Some(PROMPT_DEBUGGING),
+        "verification" => Some(PROMPT_VERIFICATION),
+        "code-review" => Some(PROMPT_CODE_REVIEW),
+        "implementation-planning" => Some(PROMPT_IMPLEMENTATION_PLANNING),
+        _ => None,
+    }
+}
+
 fn build_system_prompt(
     resolved: &ResolvedAgentConfig,
     card: &CardInfo,
     artifact_contents: &[(String, String)],
     include_skill: bool,
+    status_prompts: &[String],
 ) -> String {
     let mut parts = Vec::new();
 
@@ -96,6 +117,12 @@ fn build_system_prompt(
 
     if include_skill {
         parts.push(MAESTRO_SKILL.to_string());
+    }
+
+    for prompt_id in status_prompts {
+        if let Some(content) = get_status_prompt_content(prompt_id) {
+            parts.push(content.to_string());
+        }
     }
 
     parts.push(format!("# Task: {}", card.title));
@@ -173,7 +200,7 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None, None)
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None, None, &[])
                 .unwrap();
 
         assert_eq!(ctx.binary, "claude");
@@ -201,7 +228,7 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None, None)
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None, None, &[])
                 .unwrap();
 
         assert!(ctx.system_prompt.contains("Parent Card: Parent Feature"));
@@ -220,7 +247,7 @@ mod tests {
         };
 
         let project_config = serde_json::json!({ "agent": "nonexistent" });
-        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work", &[], None, None);
+        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work", &[], None, None, &[]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not found"));
     }
@@ -250,6 +277,7 @@ mod tests {
             &artifacts,
             None,
             None,
+            &[],
         )
         .unwrap();
 
@@ -280,11 +308,128 @@ mod tests {
             &[],
             None,
             Some("a1b2c3d4-build-feature-x"),
+            &[],
         )
         .unwrap();
 
         assert!(ctx.args.contains(&"--worktree".to_string()));
         assert!(ctx.args.contains(&"a1b2c3d4-build-feature-x".to_string()));
         assert_eq!(ctx.working_dir, "/home/user/repo");
+    }
+
+    #[test]
+    fn test_assemble_context_with_status_prompts() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-123".to_string(),
+            title: "Build feature X".to_string(),
+            description: "Implement the new feature".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let prompts = vec!["tdd".to_string(), "verification".to_string()];
+        let ctx = assemble_context(
+            &config,
+            &serde_json::json!({}),
+            "Backlog",
+            &card,
+            "/tmp/work",
+            &[],
+            None,
+            None,
+            &prompts,
+        )
+        .unwrap();
+
+        assert!(ctx.system_prompt.contains("NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST"));
+        assert!(ctx.system_prompt.contains("NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE"));
+    }
+
+    #[test]
+    fn test_assemble_context_empty_status_prompts() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-123".to_string(),
+            title: "Build feature X".to_string(),
+            description: "Implement the new feature".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let ctx = assemble_context(
+            &config,
+            &serde_json::json!({}),
+            "Backlog",
+            &card,
+            "/tmp/work",
+            &[],
+            None,
+            None,
+            &[],
+        )
+        .unwrap();
+
+        assert!(!ctx.system_prompt.contains("NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST"));
+        assert!(!ctx.system_prompt.contains("NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE"));
+    }
+
+    #[test]
+    fn test_assemble_context_unknown_status_prompt_skipped() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-123".to_string(),
+            title: "Build feature X".to_string(),
+            description: "Implement the new feature".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let prompts = vec!["nonexistent-prompt".to_string(), "tdd".to_string()];
+        let ctx = assemble_context(
+            &config,
+            &serde_json::json!({}),
+            "Backlog",
+            &card,
+            "/tmp/work",
+            &[],
+            None,
+            None,
+            &prompts,
+        )
+        .unwrap();
+
+        assert!(ctx.system_prompt.contains("NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST"));
+        assert!(!ctx.system_prompt.contains("nonexistent-prompt"));
+    }
+
+    #[test]
+    fn test_status_prompts_injected_before_card_info() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-123".to_string(),
+            title: "Build feature X".to_string(),
+            description: "Implement the new feature".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let prompts = vec!["brainstorming".to_string()];
+        let ctx = assemble_context(
+            &config,
+            &serde_json::json!({}),
+            "Backlog",
+            &card,
+            "/tmp/work",
+            &[],
+            None,
+            None,
+            &prompts,
+        )
+        .unwrap();
+
+        let brainstorming_pos = ctx.system_prompt.find("# Brainstorming").unwrap();
+        let task_pos = ctx.system_prompt.find("# Task: Build feature X").unwrap();
+        assert!(brainstorming_pos < task_pos, "Status prompts should appear before card info");
     }
 }

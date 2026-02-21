@@ -79,7 +79,7 @@ pub async fn launch_agent(
     registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
     card_id: String,
-    status_group: String,
+    status_id: String,
     worktree_path: Option<String>,
     branch_name: Option<String>,
     repo_path: Option<String>,
@@ -87,7 +87,7 @@ pub async fn launch_agent(
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let db = open_project_db(&base_path, &project_id)?;
 
-    let (card_title, card_description, parent_title, parent_description, project_agent_config) =
+    let (card_title, card_description, parent_title, parent_description, project_agent_config, status_group, status_prompts) =
         db.with_conn(|conn| {
             let (title, description, parent_id): (String, String, Option<String>) = conn
                 .query_row(
@@ -122,7 +122,17 @@ pub async fn launch_agent(
             let project_agent_config: serde_json::Value =
                 serde_json::from_str(&agent_config_json).unwrap_or_default();
 
-            Ok((title, description, parent_title, parent_description, project_agent_config))
+            let (group, prompts_json): (String, String) = conn
+                .query_row(
+                    "SELECT \"group\", status_prompts FROM statuses WHERE id = ?1",
+                    rusqlite::params![status_id],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(|e| format!("Status not found: {e}"))?;
+
+            let status_prompts: Vec<String> = serde_json::from_str(&prompts_json).unwrap_or_default();
+
+            Ok((title, description, parent_title, parent_description, project_agent_config, group, status_prompts))
         })?;
 
     let card_info = CardInfo {
@@ -189,6 +199,7 @@ pub async fn launch_agent(
             &artifact_contents,
             socket_path_str.as_deref(),
             worktree_name.as_deref(),
+            &status_prompts,
         )
     })?;
 
@@ -461,6 +472,7 @@ pub async fn resume_agent(
             &artifact_contents,
             socket_path_str.as_deref(),
             worktree_name.as_deref(),
+            &[],
         )
     })?;
 
