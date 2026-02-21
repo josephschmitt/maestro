@@ -29,7 +29,7 @@ CREATE TABLE statuses (
   name TEXT NOT NULL,
   sort_order INTEGER NOT NULL,
   is_default INTEGER NOT NULL DEFAULT 0,
-  skills TEXT NOT NULL DEFAULT '[]',
+  status_prompts TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL
 );
 

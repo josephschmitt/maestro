@@ -9,7 +9,7 @@ export function list_statuses(args: Record<string, unknown>): Status[] {
 		.sort((a, b) => a.sort_order - b.sort_order);
 }
 
-function defaultSkillsForGroup(group: string): string[] {
+function defaultStatusPromptsForGroup(group: string): string[] {
 	switch (group) {
 		case 'Backlog':
 			return ['brainstorming'];
@@ -32,7 +32,9 @@ export function create_status(args: Record<string, unknown>): Status {
 		name: args.name as string,
 		sort_order: maxOrder + 1,
 		is_default: (args.isDefault as boolean) ?? false,
-		skills: (args.skills as string[]) ?? defaultSkillsForGroup(args.group as string),
+		status_prompts:
+			(args.statusPrompts as string[]) ??
+			defaultStatusPromptsForGroup(args.group as string),
 		created_at: nowISO()
 	};
 	store.statuses.push(status);
@@ -47,7 +49,7 @@ export function update_status(args: Record<string, unknown>): Status {
 	if (!status) throw new Error(`Status not found: ${args.id}`);
 	if (args.name !== undefined) status.name = args.name as string;
 	if (args.isDefault !== undefined) status.is_default = args.isDefault as boolean;
-	if (args.skills !== undefined) status.skills = args.skills as string[];
+	if (args.statusPrompts !== undefined) status.status_prompts = args.statusPrompts as string[];
 	return status;
 }
 

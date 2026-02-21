@@ -23,18 +23,18 @@ fn has_column(conn: &Connection, table: &str, column: &str) -> bool {
     columns.contains(&column.to_string())
 }
 
-fn migrate_add_skills_to_statuses(conn: &Connection) -> Result<(), String> {
-    if !has_column(conn, "statuses", "skills") {
-        conn.execute_batch("ALTER TABLE statuses ADD COLUMN skills TEXT NOT NULL DEFAULT '[]'")
-            .map_err(|e| format!("Failed to add skills column: {e}"))?;
+fn migrate_add_status_prompts_to_statuses(conn: &Connection) -> Result<(), String> {
+    if !has_column(conn, "statuses", "status_prompts") {
+        conn.execute_batch("ALTER TABLE statuses ADD COLUMN status_prompts TEXT NOT NULL DEFAULT '[]'")
+            .map_err(|e| format!("Failed to add status_prompts column: {e}"))?;
     }
 
     conn.execute_batch(
-        "UPDATE statuses SET skills = '[\"brainstorming\"]' WHERE name = 'Backlog';\n\
-         UPDATE statuses SET skills = '[\"tdd\",\"systematic-debugging\",\"verification\"]' WHERE name = 'In Progress';\n\
-         UPDATE statuses SET skills = '[\"code-review\",\"verification\"]' WHERE name = 'In Review';",
+        "UPDATE statuses SET status_prompts = '[\"brainstorming\"]' WHERE name = 'Backlog';\n\
+         UPDATE statuses SET status_prompts = '[\"tdd\",\"systematic-debugging\",\"verification\"]' WHERE name = 'In Progress';\n\
+         UPDATE statuses SET status_prompts = '[\"code-review\",\"verification\"]' WHERE name = 'In Review';",
     )
-    .map_err(|e| format!("Failed to backfill skills: {e}"))?;
+    .map_err(|e| format!("Failed to backfill status_prompts: {e}"))?;
 
     Ok(())
 }
@@ -47,8 +47,8 @@ const MIGRATIONS: &[Migration] = &[
     },
     Migration {
         version: 2,
-        name: "add_skills_to_statuses",
-        up: MigrationFn::Func(migrate_add_skills_to_statuses),
+        name: "add_status_prompts_to_statuses",
+        up: MigrationFn::Func(migrate_add_status_prompts_to_statuses),
     },
 ];
 
@@ -152,11 +152,11 @@ mod tests {
     }
 
     #[test]
-    fn test_skills_column_exists_after_migration() {
+    fn test_status_prompts_column_exists_after_migration() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys = ON").unwrap();
         run_migrations(&conn).unwrap();
 
-        assert!(has_column(&conn, "statuses", "skills"));
+        assert!(has_column(&conn, "statuses", "status_prompts"));
     }
 }

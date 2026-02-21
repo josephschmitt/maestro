@@ -27,7 +27,7 @@ export interface Status {
 	name: string;
 	sort_order: number;
 	is_default: boolean;
-	skills: string[];
+	status_prompts: string[];
 	created_at: string;
 }
 

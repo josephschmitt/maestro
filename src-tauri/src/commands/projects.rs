@@ -26,7 +26,7 @@ struct DefaultStatus {
     name: &'static str,
     sort_order: i32,
     is_default: bool,
-    skills: &'static str,
+    status_prompts: &'static str,
 }
 
 const DEFAULT_STATUSES: &[DefaultStatus] = &[
@@ -35,42 +35,42 @@ const DEFAULT_STATUSES: &[DefaultStatus] = &[
         name: "Backlog",
         sort_order: 0,
         is_default: true,
-        skills: r#"["brainstorming"]"#,
+        status_prompts: r#"["brainstorming"]"#,
     },
     DefaultStatus {
         group: "Unstarted",
         name: "Unstarted",
         sort_order: 0,
         is_default: true,
-        skills: "[]",
+        status_prompts: "[]",
     },
     DefaultStatus {
         group: "Started",
         name: "In Progress",
         sort_order: 0,
         is_default: true,
-        skills: r#"["tdd","systematic-debugging","verification"]"#,
+        status_prompts: r#"["tdd","systematic-debugging","verification"]"#,
     },
     DefaultStatus {
         group: "Started",
         name: "In Review",
         sort_order: 1,
         is_default: false,
-        skills: r#"["code-review","verification"]"#,
+        status_prompts: r#"["code-review","verification"]"#,
     },
     DefaultStatus {
         group: "Completed",
         name: "Completed",
         sort_order: 0,
         is_default: true,
-        skills: "[]",
+        status_prompts: "[]",
     },
     DefaultStatus {
         group: "Cancelled",
         name: "Cancelled",
         sort_order: 0,
         is_default: true,
-        skills: "[]",
+        status_prompts: "[]",
     },
 ];
 
@@ -92,8 +92,8 @@ pub fn seed_default_statuses(
     for status in DEFAULT_STATUSES {
         let id = uuid::Uuid::new_v4().to_string();
         conn.execute(
-            "INSERT INTO statuses (id, project_id, \"group\", name, sort_order, is_default, skills, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            rusqlite::params![id, project_id, status.group, status.name, status.sort_order, status.is_default, status.skills, now],
+            "INSERT INTO statuses (id, project_id, \"group\", name, sort_order, is_default, status_prompts, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![id, project_id, status.group, status.name, status.sort_order, status.is_default, status.status_prompts, now],
         )
         .map_err(|e| format!("Failed to seed status '{}': {e}", status.name))?;
     }
