@@ -56,3 +56,10 @@ export async function listRunningWorkspaces(): Promise<AgentWorkspace[]> {
 export async function stopAllAgents(): Promise<void> {
 	return tauriInvoke<void>('stop_all_agents', {});
 }
+
+export async function archiveCardWorkspaces(
+	projectId: string,
+	cardId: string
+): Promise<void> {
+	return tauriInvoke<void>('archive_card_workspaces', { projectId, cardId });
+}

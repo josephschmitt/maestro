@@ -661,6 +661,26 @@ pub async fn stop_all_agents(
     Ok(())
 }
 
+#[tauri::command]
+pub fn archive_card_workspaces(
+    config: State<ConfigState>,
+    project_id: String,
+    card_id: String,
+) -> Result<(), String> {
+    let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
+    let db = open_project_db(&base_path, &project_id)?;
+    let completed_at = chrono::Utc::now().to_rfc3339();
+
+    db.with_conn(|conn| {
+        conn.execute(
+            "UPDATE agent_workspaces SET status = 'completed', completed_at = ?1 WHERE card_id = ?2 AND status NOT IN ('completed', 'failed')",
+            rusqlite::params![completed_at, card_id],
+        )
+        .map_err(|e| format!("Failed to archive workspaces: {e}"))?;
+        Ok(())
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

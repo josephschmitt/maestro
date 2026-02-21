@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { STATUS_GROUPS } from '$lib/types/index.js';
 	import type { CardProgress, OpenQuestion } from '$lib/types/index.js';
-	import { cards, cardsByStatus, addCard, getCardProgress } from '$lib/stores/cards.js';
+	import {
+		cards,
+		cardsByStatus,
+		addCard,
+		getCardProgress,
+		getTransitionPlanForMove,
+		lastRunningAgentChoice
+	} from '$lib/stores/cards.js';
 	import { statuses as allStatuses } from '$lib/stores/statuses.js';
 	import { statusesByGroup } from '$lib/stores/statuses.js';
 	import { unresolvedCountByCard, loadUnresolvedCounts } from '$lib/stores/questions.js';
@@ -9,8 +16,10 @@
 	import { currentProject } from '$lib/stores/project.js';
 	import { get } from 'svelte/store';
 	import type { PendingMove } from '$lib/utils/dnd.js';
+	import type { RunningAgentChoice } from '$lib/transitions/gates.js';
 	import StatusGroupColumn from './status-group-column.svelte';
 	import TransitionGateDialog from './transition-gate-dialog.svelte';
+	import BackwardTransitionDialog from '$lib/components/dialogs/backward-transition-dialog.svelte';
 	import EmptyState from './empty-state.svelte';
 	import FocusRegion from '$lib/focus/region.svelte';
 
@@ -27,6 +36,10 @@
 	let gateQuestions = $state<OpenQuestion[]>([]);
 	let gateCardTitle = $state('');
 	let gateResolve: ((proceed: boolean) => void) | null = $state(null);
+
+	let backwardDialogOpen = $state(false);
+	let backwardCardTitle = $state('');
+	let backwardResolve: ((choice: RunningAgentChoice | null) => void) | null = $state(null);
 
 	$effect(() => {
 		const cardIds = $cards.filter((c) => c.parent_id === null).map((c) => c.id);
@@ -45,25 +58,51 @@
 		return $unresolvedCountByCard.get(cardId) ?? 0;
 	}
 
-	async function gateCheck(move: PendingMove): Promise<boolean> {
-		const targetStatus = $allStatuses.find((s) => s.id === move.targetStatusId);
-		if (!targetStatus || targetStatus.group !== 'Started') return true;
+	function showRunningAgentPrompt(cardTitle: string): Promise<RunningAgentChoice | null> {
+		return new Promise((resolve) => {
+			backwardCardTitle = cardTitle;
+			backwardDialogOpen = true;
+			backwardResolve = resolve;
+		});
+	}
 
-		const project = get(currentProject);
-		if (!project) return true;
-
-		const questions = await listQuestions(project.id, move.cardId);
-		const unresolved = questions.filter((q) => !q.resolved_at);
-		if (unresolved.length === 0) return true;
-
-		const card = $cards.find((c) => c.id === move.cardId);
-		gateCardTitle = card?.title ?? 'Card';
-		gateQuestions = unresolved;
-		gateDialogOpen = true;
-
-		return new Promise<boolean>((resolve) => {
+	function showOpenQuestionsGate(cardTitle: string, questions: OpenQuestion[]): Promise<boolean> {
+		return new Promise((resolve) => {
+			gateCardTitle = cardTitle;
+			gateQuestions = questions;
+			gateDialogOpen = true;
 			gateResolve = resolve;
 		});
+	}
+
+	async function gateCheck(move: PendingMove): Promise<boolean> {
+		lastRunningAgentChoice.set(undefined);
+
+		const result = await getTransitionPlanForMove(move.cardId, move.targetStatusId);
+		if (!result) return true;
+
+		const { plan, card } = result;
+
+		if (plan.gates.length === 0) return true;
+
+		for (const gate of plan.gates) {
+			if (gate.id === 'running-agent') {
+				const choice = await showRunningAgentPrompt(card.title);
+				if (!choice) return false;
+				lastRunningAgentChoice.set(choice);
+			} else if (gate.id === 'open-questions') {
+				const project = get(currentProject);
+				if (!project) return true;
+				const questions = await listQuestions(project.id, move.cardId);
+				const unresolved = questions.filter((q) => !q.resolved_at);
+				if (unresolved.length > 0) {
+					const proceed = await showOpenQuestionsGate(card.title, unresolved);
+					if (!proceed) return false;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	function handleGateProceed() {
@@ -76,6 +115,18 @@
 		gateDialogOpen = false;
 		gateResolve?.(false);
 		gateResolve = null;
+	}
+
+	function handleBackwardChoice(choice: RunningAgentChoice) {
+		backwardDialogOpen = false;
+		backwardResolve?.(choice);
+		backwardResolve = null;
+	}
+
+	function handleBackwardCancel() {
+		backwardDialogOpen = false;
+		backwardResolve?.(null);
+		backwardResolve = null;
 	}
 
 	async function handleAddCard(statusId: string, title: string) {
@@ -124,4 +175,11 @@
 	cardTitle={gateCardTitle}
 	onproceed={handleGateProceed}
 	oncancel={handleGateCancel}
+/>
+
+<BackwardTransitionDialog
+	open={backwardDialogOpen}
+	cardTitle={backwardCardTitle}
+	onchoice={handleBackwardChoice}
+	oncancel={handleBackwardCancel}
 />

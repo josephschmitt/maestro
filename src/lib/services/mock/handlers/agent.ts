@@ -88,6 +88,17 @@ export function stop_all_agents(): void {
 	}
 }
 
+export function archive_card_workspaces(args: Record<string, unknown>): void {
+	const store = getStore();
+	const cardId = args.cardId as string;
+	for (const ws of store.agentWorkspaces) {
+		if (ws.card_id === cardId && ws.status !== 'completed' && ws.status !== 'failed') {
+			ws.status = 'completed';
+			ws.completed_at = nowISO();
+		}
+	}
+}
+
 function simulateMockOutput(workspaceId: string): void {
 	const store = getStore();
 	const lines = [

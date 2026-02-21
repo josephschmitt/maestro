@@ -103,6 +103,7 @@ pub fn run() {
             commands::agent::get_workspace,
             commands::agent::list_running_workspaces,
             commands::agent::stop_all_agents,
+            commands::agent::archive_card_workspaces,
             commands::worktrees::generate_branch_name,
             commands::worktrees::create_worktree,
             commands::worktrees::check_worktree_exists,
