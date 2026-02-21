@@ -123,3 +123,37 @@ export interface ResolvedAgentConfigResponse {
 	model: string | null;
 	instructions: string | null;
 }
+
+export type FileChangeStatus = 'A' | 'M' | 'D';
+
+export interface ChangedFile {
+	path: string;
+	status: FileChangeStatus;
+}
+
+export type DiffLineType = 'added' | 'removed' | 'context';
+
+export interface DiffLine {
+	line_type: DiffLineType;
+	content: string;
+	old_line: number | null;
+	new_line: number | null;
+}
+
+export interface DiffHunk {
+	old_start: number;
+	old_count: number;
+	new_start: number;
+	new_count: number;
+	header: string;
+	lines: DiffLine[];
+}
+
+export interface FileDiff {
+	path: string;
+	hunks: DiffHunk[];
+}
+
+export interface CreatePrResult {
+	url: string;
+}

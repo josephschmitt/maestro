@@ -111,6 +111,12 @@ pub fn run() {
             commands::worktrees::get_claude_worktree_path,
             commands::ipc::start_ipc_server,
             commands::ipc::stop_ipc_server,
+            commands::review::get_changed_files,
+            commands::review::get_file_diff,
+            commands::review::send_back_card,
+            commands::review::approve_card,
+            commands::review::create_pr,
+            commands::review::get_review_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
