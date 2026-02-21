@@ -6,6 +6,8 @@
 	import LinkDirectoryPrompt from '$lib/components/dialogs/link-directory-prompt.svelte';
 	import RepoSelectorDialog from '$lib/components/dialogs/repo-selector-dialog.svelte';
 	import BranchNameDialog from '$lib/components/dialogs/branch-name-dialog.svelte';
+	import QuitDialog from '$lib/components/dialogs/quit-dialog.svelte';
+	import AgentCrashedDialog from '$lib/components/dialogs/agent-crashed-dialog.svelte';
 	import {
 		repoSelectorState,
 		branchNameState,
@@ -13,19 +15,111 @@
 		resolveBranchName
 	} from '$lib/stores/worktree-flow.js';
 	import { initializeProject, hasProject } from '$lib/stores/project.js';
-	import { onMount } from 'svelte';
+	import { listRunningWorkspaces, stopAllAgents } from '$lib/services/agent.js';
+	import { resumeAgent } from '$lib/stores/agent.js';
+	import { onMount, onDestroy } from 'svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { resolve } from '$app/paths';
 	import FocusRegion from '$lib/focus/region.svelte';
 
+	interface CrashedAgent {
+		workspace_id: string;
+		project_id: string;
+		card_id: string;
+		session_id: string | null;
+	}
+
 	let { children } = $props();
 	let createDialogOpen = $state(false);
+	let quitDialogOpen = $state(false);
+	let quitRunningCount = $state(0);
+	let crashDialogOpen = $state(false);
+	let crashedAgents = $state<CrashedAgent[]>([]);
+	let cleanupFns: (() => void)[] = [];
 
 	onMount(() => {
 		initializeProject();
+		setupTauriListeners();
 	});
+
+	onDestroy(() => {
+		for (const fn of cleanupFns) fn();
+	});
+
+	async function setupTauriListeners() {
+		try {
+			const { listen } = await import('@tauri-apps/api/event');
+
+			const unlistenCrashed = await listen<{ workspace_id: string; project_id: string }>(
+				'agent-crashed',
+				(event) => {
+					crashedAgents = [
+						...crashedAgents,
+						{
+							workspace_id: event.payload.workspace_id,
+							project_id: event.payload.project_id,
+							card_id: '',
+							session_id: null
+						}
+					];
+					crashDialogOpen = true;
+				}
+			);
+
+			const unlistenStartupCrash = await listen<CrashedAgent[]>(
+				'agents-crashed-on-startup',
+				(event) => {
+					crashedAgents = event.payload;
+					crashDialogOpen = true;
+				}
+			);
+
+			const { getCurrentWindow } = await import('@tauri-apps/api/window');
+			const unlistenClose = await getCurrentWindow().onCloseRequested(async (event) => {
+				const running = await listRunningWorkspaces();
+				if (running.length > 0) {
+					event.preventDefault();
+					quitRunningCount = running.length;
+					quitDialogOpen = true;
+				}
+			});
+
+			cleanupFns.push(unlistenCrashed, unlistenStartupCrash, unlistenClose);
+		} catch {
+			// Not in Tauri environment
+		}
+	}
+
+	async function handleStopAll() {
+		await stopAllAgents();
+		quitDialogOpen = false;
+	}
+
+	function handleKeepRunning() {
+		quitDialogOpen = false;
+	}
+
+	function handleCancelQuit() {
+		quitDialogOpen = false;
+	}
+
+	function handleResumeCrashed(workspaceId: string, projectId: string) {
+		const agent = crashedAgents.find(
+			(a) => a.workspace_id === workspaceId && a.project_id === projectId
+		);
+		if (agent?.card_id) {
+			resumeAgent(workspaceId, agent.card_id);
+		}
+		crashedAgents = crashedAgents.filter((a) => a.workspace_id !== workspaceId);
+		if (crashedAgents.length === 0) crashDialogOpen = false;
+	}
+
+	function handleDismissCrashed() {
+		crashedAgents = [];
+		crashDialogOpen = false;
+	}
 </script>
 
 <svelte:head>
@@ -84,4 +178,17 @@
 	defaultBranchName={$branchNameState.defaultBranchName}
 	onconfirm={(name) => resolveBranchName(name)}
 	oncancel={() => resolveBranchName(null)}
+/>
+<QuitDialog
+	bind:open={quitDialogOpen}
+	runningCount={quitRunningCount}
+	onstopall={handleStopAll}
+	onkeeprunning={handleKeepRunning}
+	oncancel={handleCancelQuit}
+/>
+<AgentCrashedDialog
+	bind:open={crashDialogOpen}
+	{crashedAgents}
+	onresume={handleResumeCrashed}
+	ondismiss={handleDismissCrashed}
 />

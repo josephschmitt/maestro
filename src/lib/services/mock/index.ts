@@ -63,8 +63,11 @@ const handlers: Record<string, Handler> = {
 	launch_agent: agent.launch_agent,
 	send_agent_input: agent.send_agent_input,
 	stop_agent: agent.stop_agent,
+	resume_agent: agent.resume_agent,
 	list_workspaces: agent.list_workspaces,
 	get_workspace: agent.get_workspace,
+	list_running_workspaces: agent.list_running_workspaces,
+	stop_all_agents: agent.stop_all_agents,
 
 	generate_branch_name: worktrees.generate_branch_name,
 	create_worktree: worktrees.create_worktree,

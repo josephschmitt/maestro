@@ -40,3 +40,19 @@ export async function getWorkspace(
 ): Promise<AgentWorkspace> {
 	return tauriInvoke<AgentWorkspace>('get_workspace', { projectId, workspaceId });
 }
+
+export async function resumeAgent(
+	projectId: string,
+	workspaceId: string,
+	cardId: string
+): Promise<AgentWorkspace> {
+	return tauriInvoke<AgentWorkspace>('resume_agent', { projectId, workspaceId, cardId });
+}
+
+export async function listRunningWorkspaces(): Promise<AgentWorkspace[]> {
+	return tauriInvoke<AgentWorkspace[]>('list_running_workspaces', {});
+}
+
+export async function stopAllAgents(): Promise<void> {
+	return tauriInvoke<void>('stop_all_agents', {});
+}

@@ -7,8 +7,11 @@
 		loadWorkspaces,
 		startAgent,
 		stopCurrentAgent,
-		sendInput
+		sendInput,
+		resumeAgent
 	} from '$lib/stores/agent.js';
+	import { Button } from '$lib/components/ui/button/index.js';
+	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import AgentTerminal from '../agent-terminal.svelte';
 	import AgentControls from '../agent-controls.svelte';
 	import CircleDotIcon from '@lucide/svelte/icons/circle-dot';
@@ -139,6 +142,20 @@
 						<span class={`rounded-full px-2 py-0.5 text-xs ${statusBadgeClass(ws.status)}`}>
 							{ws.status}
 						</span>
+						{#if ws.status === 'failed' && ws.session_id}
+							<Button
+								size="sm"
+								variant="outline"
+								class="h-6 gap-1 px-2 text-xs"
+								onclick={(e: MouseEvent) => {
+									e.stopPropagation();
+									resumeAgent(ws.id, cardId);
+								}}
+							>
+								<RotateCcwIcon class="size-3" />
+								Resume
+							</Button>
+						{/if}
 						<span class="shrink-0 text-xs text-muted-foreground">
 							{new Date(ws.attached_at).toLocaleString()}
 						</span>
