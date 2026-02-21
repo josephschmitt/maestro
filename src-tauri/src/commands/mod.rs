@@ -7,5 +7,6 @@ pub mod directories;
 pub mod ipc;
 pub mod projects;
 pub mod questions;
+pub mod review;
 pub mod statuses;
 pub mod worktrees;

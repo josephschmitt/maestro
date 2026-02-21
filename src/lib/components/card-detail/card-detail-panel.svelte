@@ -5,7 +5,7 @@
 	import CardDescription from './card-description.svelte';
 	import SubCardsList from './sub-cards-list.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
-	import { getSubCards, updateCard, moveCard, addCard } from '$lib/stores/cards.js';
+	import { getSubCards, updateCard, moveCard, addCard, loadCards } from '$lib/stores/cards.js';
 	import { statuses as allStatuses } from '$lib/stores/statuses.js';
 	import { onMount } from 'svelte';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -13,6 +13,7 @@
 	import ArtifactsTab from './tabs/artifacts-tab.svelte';
 	import ConversationsTab from './tabs/conversations-tab.svelte';
 	import AgentTab from './tabs/agent-tab.svelte';
+	import ReviewTab from './tabs/review-tab.svelte';
 
 	let {
 		cardId,
@@ -70,6 +71,10 @@
 		onnavigate(subCardId);
 	}
 
+	async function handleReviewStatusChange() {
+		await loadCards();
+	}
+
 	const tabItems = [
 		{ value: 'conversations', label: 'Conversations' },
 		{ value: 'questions', label: 'Open Questions' },
@@ -77,8 +82,6 @@
 		{ value: 'agent', label: 'Agent' },
 		{ value: 'review', label: 'Review' }
 	];
-
-	const placeholderTabs = tabItems.filter((t) => t.value !== 'questions' && t.value !== 'artifacts' && t.value !== 'conversations' && t.value !== 'agent');
 </script>
 
 <SlideOver open={true} onclose={onclose}>
@@ -151,15 +154,17 @@
 							</div>
 						</Tabs.Content>
 
-						{#each placeholderTabs as tab (tab.value)}
-							<Tabs.Content value={tab.value}>
-								<div class="py-4">
-									<p class="text-sm text-muted-foreground">
-										{tab.label} — coming soon.
-									</p>
-								</div>
-							</Tabs.Content>
-						{/each}
+						<Tabs.Content value="review">
+							<div class="py-4">
+								<ReviewTab
+									{cardId}
+									cardTitle={card.title}
+									cardDescription={card.description}
+									statuses={$allStatuses}
+									onstatuschange={handleReviewStatusChange}
+								/>
+							</div>
+						</Tabs.Content>
 					</Tabs.Root>
 				</div>
 			</div>

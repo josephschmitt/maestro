@@ -8,6 +8,7 @@ import * as directories from './handlers/directories.js';
 import * as conversations from './handlers/conversations.js';
 import * as agent from './handlers/agent.js';
 import * as worktrees from './handlers/worktrees.js';
+import * as review from './handlers/review.js';
 
 type Handler = (args: Record<string, unknown>) => unknown;
 
@@ -74,7 +75,14 @@ const handlers: Record<string, Handler> = {
 	create_worktree: worktrees.create_worktree,
 	check_worktree_exists: worktrees.check_worktree_exists,
 	get_card_worktree: worktrees.get_card_worktree,
-	get_claude_worktree_path: worktrees.get_claude_worktree_path
+	get_claude_worktree_path: worktrees.get_claude_worktree_path,
+
+	get_changed_files: review.get_changed_files,
+	get_file_diff: review.get_file_diff,
+	send_back_card: review.send_back_card,
+	approve_card: review.approve_card,
+	create_pr: review.create_pr,
+	get_review_count: review.get_review_count
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {
