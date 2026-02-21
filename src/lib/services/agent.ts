@@ -4,12 +4,16 @@ import { tauriInvoke } from './db.js';
 export async function launchAgent(
 	projectId: string,
 	cardId: string,
-	statusGroup: string
+	statusGroup: string,
+	worktreePath?: string | null,
+	branchName?: string | null
 ): Promise<AgentWorkspace> {
 	return tauriInvoke<AgentWorkspace>('launch_agent', {
 		projectId,
 		cardId,
-		statusGroup
+		statusGroup,
+		worktreePath: worktreePath ?? null,
+		branchName: branchName ?? null
 	});
 }
 

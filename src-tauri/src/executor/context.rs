@@ -24,12 +24,13 @@ pub fn assemble_context(
     status_group: &str,
     card: &CardInfo,
     working_dir: &str,
+    artifact_contents: &[(String, String)],
 ) -> Result<AgentContext, String> {
     let resolved = resolve_agent_config(global_config, project_agent_config, status_group);
 
     let (binary, base_flags) = resolve_binary_and_flags(global_config, &resolved)?;
 
-    let system_prompt = build_system_prompt(&resolved, card);
+    let system_prompt = build_system_prompt(&resolved, card, artifact_contents);
 
     let mut args = base_flags;
     args.push("--print".to_string());
@@ -68,7 +69,11 @@ fn resolve_binary_and_flags(
     }
 }
 
-fn build_system_prompt(resolved: &ResolvedAgentConfig, card: &CardInfo) -> String {
+fn build_system_prompt(
+    resolved: &ResolvedAgentConfig,
+    card: &CardInfo,
+    artifact_contents: &[(String, String)],
+) -> String {
     let mut parts = Vec::new();
 
     if let Some(ref instructions) = resolved.instructions {
@@ -87,6 +92,13 @@ fn build_system_prompt(resolved: &ResolvedAgentConfig, card: &CardInfo) -> Strin
             if !parent_desc.is_empty() {
                 parts.push(parent_desc.clone());
             }
+        }
+    }
+
+    if !artifact_contents.is_empty() {
+        parts.push("\n## Exploration Artifacts\n".to_string());
+        for (name, content) in artifact_contents {
+            parts.push(format!("### {name}\n\n{content}"));
         }
     }
 
@@ -143,7 +155,7 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work")
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[])
                 .unwrap();
 
         assert_eq!(ctx.binary, "claude");
@@ -170,7 +182,7 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work")
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[])
                 .unwrap();
 
         assert!(ctx.system_prompt.contains("Parent Card: Parent Feature"));
@@ -189,8 +201,41 @@ mod tests {
         };
 
         let project_config = serde_json::json!({ "agent": "nonexistent" });
-        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work");
+        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work", &[]);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not found"));
+    }
+
+    #[test]
+    fn test_assemble_context_with_artifacts() {
+        let config = test_config();
+        let card = CardInfo {
+            id: "card-123".to_string(),
+            title: "Build feature X".to_string(),
+            description: "Implement the new feature".to_string(),
+            parent_title: None,
+            parent_description: None,
+        };
+
+        let artifacts = vec![
+            ("plan.md".to_string(), "# Implementation Plan\n\nStep 1: Do stuff".to_string()),
+            ("notes.md".to_string(), "Research notes here".to_string()),
+        ];
+
+        let ctx = assemble_context(
+            &config,
+            &serde_json::json!({}),
+            "Backlog",
+            &card,
+            "/tmp/work",
+            &artifacts,
+        )
+        .unwrap();
+
+        assert!(ctx.system_prompt.contains("Exploration Artifacts"));
+        assert!(ctx.system_prompt.contains("plan.md"));
+        assert!(ctx.system_prompt.contains("Implementation Plan"));
+        assert!(ctx.system_prompt.contains("notes.md"));
+        assert!(ctx.system_prompt.contains("Research notes here"));
     }
 }

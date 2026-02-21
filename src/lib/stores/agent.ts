@@ -40,11 +40,22 @@ export async function loadWorkspaces(cardId: string): Promise<void> {
 	workspaces.set(list);
 }
 
-export async function startAgent(cardId: string, statusGroup: string): Promise<AgentWorkspace> {
+export async function startAgent(
+	cardId: string,
+	statusGroup: string,
+	worktreePath?: string | null,
+	branchName?: string | null
+): Promise<AgentWorkspace> {
 	const project = get(currentProject);
 	if (!project) throw new Error('No project selected');
 
-	const workspace = await launchAgentService(project.id, cardId, statusGroup);
+	const workspace = await launchAgentService(
+		project.id,
+		cardId,
+		statusGroup,
+		worktreePath,
+		branchName
+	);
 
 	await loadWorkspaces(cardId);
 	activeWorkspaceId.set(workspace.id);

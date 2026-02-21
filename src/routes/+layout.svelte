@@ -4,6 +4,14 @@
 	import ProjectSwitcher from '$lib/components/project-switcher.svelte';
 	import CreateProjectDialog from '$lib/components/dialogs/create-project-dialog.svelte';
 	import LinkDirectoryPrompt from '$lib/components/dialogs/link-directory-prompt.svelte';
+	import RepoSelectorDialog from '$lib/components/dialogs/repo-selector-dialog.svelte';
+	import BranchNameDialog from '$lib/components/dialogs/branch-name-dialog.svelte';
+	import {
+		repoSelectorState,
+		branchNameState,
+		resolveRepoSelection,
+		resolveBranchName
+	} from '$lib/stores/worktree-flow.js';
 	import { initializeProject, hasProject } from '$lib/stores/project.js';
 	import { onMount } from 'svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
@@ -65,3 +73,15 @@
 
 <CreateProjectDialog bind:open={createDialogOpen} />
 <LinkDirectoryPrompt />
+<RepoSelectorDialog
+	bind:open={$repoSelectorState.open}
+	repos={$repoSelectorState.repos}
+	onselect={(repo) => resolveRepoSelection(repo)}
+	onskip={() => resolveRepoSelection(null)}
+/>
+<BranchNameDialog
+	bind:open={$branchNameState.open}
+	defaultBranchName={$branchNameState.defaultBranchName}
+	onconfirm={(name) => resolveBranchName(name)}
+	oncancel={() => resolveBranchName(null)}
+/>
