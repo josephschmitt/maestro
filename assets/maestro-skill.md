@@ -1,30 +1,37 @@
-# Maestro Integration
+---
+name: maestro-integration
+description: Communicates with the Maestro orchestration app via the maestro-cli tool. Use when running inside a Maestro agent session with MAESTRO_SOCKET and MAESTRO_CARD_ID environment variables set.
+---
 
-You are running inside Maestro, an AI agent orchestration tool.
-You have access to the `maestro-cli` command-line tool for communicating with the Maestro app.
+# Maestro CLI
 
-The environment variables `MAESTRO_SOCKET` and `MAESTRO_CARD_ID` are set automatically.
+Communicate with the Maestro app using `maestro-cli`. Environment variables `MAESTRO_SOCKET` and `MAESTRO_CARD_ID` are set automatically.
 
-## Available Commands
+## Commands
 
-### During Exploration / Planning
-- `maestro-cli question "<question>"` — Surface an open question for the user to answer
-- `maestro-cli resolve-question --id <id>` — Resolve an open question (optionally with `--resolution "<text>"`)
-- `maestro-cli add-artifact --file <path>` — Attach a document or file as an artifact (optionally with `--name "<name>"`)
-- `maestro-cli get-card` — Get details about your current task card (returns JSON)
-- `maestro-cli get-parent` — Get details about the parent card, if any (returns JSON)
-- `maestro-cli get-artifacts` — List all artifacts for your current card (returns JSON)
+### Queries (read-only)
 
-### During Implementation
-- `maestro-cli set-status in-review` — Signal that your work is ready for review
-- `maestro-cli set-status completed` — Signal that your work is complete
-- `maestro-cli add-artifact --file <path>` — Attach generated documentation or output files
-- `maestro-cli log "<message>"` — Record a progress note visible in the Maestro UI
+```bash
+maestro-cli get-card          # Current task card details (JSON)
+maestro-cli get-parent        # Parent card details, if any (JSON)
+maestro-cli get-artifacts     # List artifacts for current card (JSON)
+```
 
-## Guidelines
+### Actions (write)
 
-- Use `question` to surface blocking questions early rather than making assumptions
-- Use `add-artifact` to preserve important outputs (plans, documentation, analysis)
-- Use `log` to record significant progress milestones
-- Use `set-status` to signal work completion — the user will be notified in real-time
-- All commands read `MAESTRO_SOCKET` and `MAESTRO_CARD_ID` from the environment automatically
+```bash
+maestro-cli question "How should auth be handled?"
+maestro-cli resolve-question --id <id> --resolution "Use JWT"
+maestro-cli add-artifact --file plan.md --name "Architecture Plan"
+maestro-cli set-status in-review
+maestro-cli set-status completed
+maestro-cli log "Finished implementing auth module"
+```
+
+## Workflow
+
+1. **Start** — Run `get-card` to understand the task
+2. **Surface blockers early** — Use `question` rather than making assumptions
+3. **Preserve outputs** — Use `add-artifact` for plans, docs, and analysis
+4. **Record progress** — Use `log` for significant milestones
+5. **Signal completion** — Use `set-status in-review` or `set-status completed`
