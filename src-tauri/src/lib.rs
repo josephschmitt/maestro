@@ -8,6 +8,8 @@ pub mod ipc;
 use std::sync::Arc;
 
 use commands::config::ConfigState;
+use executor::monitor::start_pid_monitor;
+use executor::reattach::startup_scan;
 use executor::AgentRegistry;
 use ipc::server::IpcServer;
 use tauri::Manager;
@@ -20,8 +22,35 @@ pub fn run() {
         .setup(|app| {
             let config_state =
                 ConfigState::load().expect("failed to initialize global config");
+
+            let base_path = config_state
+                .with_config(|c| Ok(c.resolve_base_path()))
+                .expect("failed to resolve base path");
+
+            let registry = Arc::new(AgentRegistry::new());
+
+            let scan_result = startup_scan(app.handle(), &base_path);
+            for ws in &scan_result.reattached {
+                eprintln!(
+                    "[startup] Re-attached to workspace {} (pid {})",
+                    ws.workspace_id, ws.pid
+                );
+            }
+            for ws in &scan_result.failed {
+                eprintln!(
+                    "[startup] Workspace {} marked as failed (no live process)",
+                    ws.workspace_id
+                );
+            }
+
+            start_pid_monitor(
+                app.handle().clone(),
+                Arc::clone(&registry),
+                base_path,
+            );
+
             app.manage(config_state);
-            app.manage(Arc::new(AgentRegistry::new()));
+            app.manage(registry);
             app.manage(Arc::new(IpcServer::new()));
             Ok(())
         })
@@ -69,8 +98,11 @@ pub fn run() {
             commands::agent::launch_agent,
             commands::agent::send_agent_input,
             commands::agent::stop_agent,
+            commands::agent::resume_agent,
             commands::agent::list_workspaces,
             commands::agent::get_workspace,
+            commands::agent::list_running_workspaces,
+            commands::agent::stop_all_agents,
             commands::worktrees::generate_branch_name,
             commands::worktrees::create_worktree,
             commands::worktrees::check_worktree_exists,

@@ -3,6 +3,7 @@ import type { AgentWorkspace } from '$lib/types/index.js';
 import {
 	launchAgent as launchAgentService,
 	stopAgent as stopAgentService,
+	resumeAgent as resumeAgentService,
 	listWorkspaces as listWorkspacesService,
 	sendAgentInput as sendAgentInputService
 } from '$lib/services/agent.js';
@@ -80,6 +81,20 @@ export async function stopCurrentAgent(workspaceId: string): Promise<void> {
 	}
 
 	cleanupListener(workspaceId);
+}
+
+export async function resumeAgent(workspaceId: string, cardId: string): Promise<AgentWorkspace> {
+	const project = get(currentProject);
+	if (!project) throw new Error('No project selected');
+
+	const workspace = await resumeAgentService(project.id, workspaceId, cardId);
+
+	await loadWorkspaces(cardId);
+	activeWorkspaceId.set(workspace.id);
+
+	await listenForOutput(workspace.id);
+
+	return workspace;
 }
 
 export async function sendInput(workspaceId: string, text: string): Promise<void> {
