@@ -73,6 +73,14 @@ pub fn get_card_worktree(
     })
 }
 
+#[tauri::command]
+pub fn get_claude_worktree_path(repo_path: String, card_id: String, title: String) -> String {
+    let worktree_name = worktrees::worktree_name_from_card(&card_id, &title);
+    worktrees::claude_worktree_path(&repo_path, &worktree_name)
+        .to_string_lossy()
+        .to_string()
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct WorktreeInfo {
     pub path: String,

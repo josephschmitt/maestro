@@ -69,7 +69,8 @@ const handlers: Record<string, Handler> = {
 	generate_branch_name: worktrees.generate_branch_name,
 	create_worktree: worktrees.create_worktree,
 	check_worktree_exists: worktrees.check_worktree_exists,
-	get_card_worktree: worktrees.get_card_worktree
+	get_card_worktree: worktrees.get_card_worktree,
+	get_claude_worktree_path: worktrees.get_claude_worktree_path
 };
 
 export function dispatchMockCommand<T>(command: string, args?: Record<string, unknown>): T {
