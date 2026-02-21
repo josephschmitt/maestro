@@ -43,7 +43,7 @@ export async function loadWorkspaces(cardId: string): Promise<void> {
 
 export async function startAgent(
 	cardId: string,
-	statusGroup: string,
+	statusId: string,
 	worktreePath?: string | null,
 	branchName?: string | null,
 	repoPath?: string | null
@@ -54,7 +54,7 @@ export async function startAgent(
 	const workspace = await launchAgentService(
 		project.id,
 		cardId,
-		statusGroup,
+		statusId,
 		worktreePath,
 		branchName,
 		repoPath

@@ -21,10 +21,10 @@
 
 	let {
 		cardId,
-		statusGroup
+		statusId
 	}: {
 		cardId: string;
-		statusGroup: string;
+		statusId: string;
 	} = $props();
 
 	$effect(() => {
@@ -34,7 +34,7 @@
 
 	async function handleStart() {
 		const wt = $pendingWorktree.get(cardId);
-		await startAgent(cardId, statusGroup, wt?.worktreePath, wt?.branchName, wt?.repoPath);
+		await startAgent(cardId, statusId, wt?.worktreePath, wt?.branchName, wt?.repoPath);
 	}
 
 	async function handleStop() {

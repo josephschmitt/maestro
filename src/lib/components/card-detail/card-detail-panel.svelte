@@ -147,7 +147,7 @@
 
 						<Tabs.Content value="agent">
 							<div class="py-4">
-								<AgentTab {cardId} statusGroup={card.status_group} />
+								<AgentTab {cardId} statusId={card.status_id} />
 							</div>
 						</Tabs.Content>
 
