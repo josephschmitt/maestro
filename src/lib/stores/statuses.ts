@@ -43,7 +43,7 @@ export async function addStatus(group: StatusGroup, name: string, isDefault?: bo
 
 export async function updateStatus(
 	id: string,
-	updates: { name?: string; isDefault?: boolean }
+	updates: { name?: string; isDefault?: boolean; statusPrompts?: string[] }
 ): Promise<Status> {
 	const project = get(currentProject);
 	if (!project) throw new Error('No project selected');

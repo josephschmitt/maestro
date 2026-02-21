@@ -15,6 +15,7 @@
 	} from '$lib/stores/statuses.js';
 	import { currentProject } from '$lib/stores/project.js';
 	import { onMount } from 'svelte';
+	import StatusPromptPicker from '$lib/components/settings/status-prompt-picker.svelte';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
@@ -104,6 +105,15 @@
 		editingName = '';
 	}
 
+	async function handleUpdatePrompts(id: string, prompts: string[]) {
+		try {
+			error = null;
+			await updateStatus(id, { statusPrompts: prompts });
+		} catch (e) {
+			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
 	async function handleMoveUp(group: StatusGroup, index: number) {
 		const groupStatuses = $statusesByGroup.get(group);
 		if (!groupStatuses || index <= 0) return;
@@ -160,88 +170,99 @@
 				<div class="space-y-1">
 					{#each groupStatuses as status, i (status.id)}
 						<div
-							class="flex items-center gap-2 rounded-md border border-border px-3 py-2"
+							class="rounded-md border border-border px-3 py-2"
 						>
-							<GripVerticalIcon class="size-4 shrink-0 text-muted-foreground" />
+							<div class="flex items-center gap-2">
+								<GripVerticalIcon class="size-4 shrink-0 text-muted-foreground" />
 
-							{#if editingId === status.id}
-								<Input
-									value={editingName}
-									oninput={(e: Event) => (editingName = (e.target as HTMLInputElement).value)}
-									onkeydown={(e: KeyboardEvent) => {
-										if (e.key === 'Enter') saveEdit();
-										if (e.key === 'Escape') cancelEdit();
-									}}
-									class="h-7 flex-1 text-sm"
-								/>
-								<Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={saveEdit}>
-									<CheckIcon class="size-3.5" />
-								</Button>
-								<Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={cancelEdit}>
-									<XIcon class="size-3.5" />
-								</Button>
-							{:else}
-								<StatusBadge name={status.name} {group} />
+								{#if editingId === status.id}
+									<Input
+										value={editingName}
+										oninput={(e: Event) => (editingName = (e.target as HTMLInputElement).value)}
+										onkeydown={(e: KeyboardEvent) => {
+											if (e.key === 'Enter') saveEdit();
+											if (e.key === 'Escape') cancelEdit();
+										}}
+										class="h-7 flex-1 text-sm"
+									/>
+									<Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={saveEdit}>
+										<CheckIcon class="size-3.5" />
+									</Button>
+									<Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={cancelEdit}>
+										<XIcon class="size-3.5" />
+									</Button>
+								{:else}
+									<StatusBadge name={status.name} {group} />
 
-								{#if status.is_default}
-									<StarIcon class="size-3.5 fill-amber-400 text-amber-400" />
-								{/if}
+									{#if status.is_default}
+										<StarIcon class="size-3.5 fill-amber-400 text-amber-400" />
+									{/if}
 
-								<div class="flex-1"></div>
+									<div class="flex-1"></div>
 
-								<Button
-									variant="ghost"
-									size="sm"
-									class="h-7 w-7 p-0"
-									title="Edit name"
-									onclick={() => startEditing(status.id, status.name)}
-								>
-									<PencilIcon class="size-3.5" />
-								</Button>
-
-								{#if !status.is_default}
 									<Button
 										variant="ghost"
 										size="sm"
 										class="h-7 w-7 p-0"
-										title="Set as default"
-										onclick={() => handleSetDefault(status.id)}
+										title="Edit name"
+										onclick={() => startEditing(status.id, status.name)}
 									>
-										<StarIcon class="size-3.5" />
+										<PencilIcon class="size-3.5" />
+									</Button>
+
+									{#if !status.is_default}
+										<Button
+											variant="ghost"
+											size="sm"
+											class="h-7 w-7 p-0"
+											title="Set as default"
+											onclick={() => handleSetDefault(status.id)}
+										>
+											<StarIcon class="size-3.5" />
+										</Button>
+									{/if}
+
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 w-7 p-0"
+										disabled={i === 0}
+										title="Move up"
+										onclick={() => handleMoveUp(group, i)}
+									>
+										<ChevronUpIcon class="size-3.5" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 w-7 p-0"
+										disabled={i === groupStatuses.length - 1}
+										title="Move down"
+										onclick={() => handleMoveDown(group, i)}
+									>
+										<ChevronDownIcon class="size-3.5" />
+									</Button>
+
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 w-7 p-0 text-destructive hover:text-destructive"
+										disabled={groupStatuses.length <= 1}
+										title="Delete status"
+										onclick={() => handleDelete(status.id)}
+									>
+										<TrashIcon class="size-3.5" />
 									</Button>
 								{/if}
+							</div>
 
-								<Button
-									variant="ghost"
-									size="sm"
-									class="h-7 w-7 p-0"
-									disabled={i === 0}
-									title="Move up"
-									onclick={() => handleMoveUp(group, i)}
-								>
-									<ChevronUpIcon class="size-3.5" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="sm"
-									class="h-7 w-7 p-0"
-									disabled={i === groupStatuses.length - 1}
-									title="Move down"
-									onclick={() => handleMoveDown(group, i)}
-								>
-									<ChevronDownIcon class="size-3.5" />
-								</Button>
-
-								<Button
-									variant="ghost"
-									size="sm"
-									class="h-7 w-7 p-0 text-destructive hover:text-destructive"
-									disabled={groupStatuses.length <= 1}
-									title="Delete status"
-									onclick={() => handleDelete(status.id)}
-								>
-									<TrashIcon class="size-3.5" />
-								</Button>
+							{#if editingId !== status.id}
+								<div class="ml-6 mt-1">
+									<StatusPromptPicker
+										statusPrompts={status.status_prompts}
+										onchange={(prompts) => handleUpdatePrompts(status.id, prompts)}
+									/>
+								</div>
 							{/if}
 						</div>
 					{/each}
