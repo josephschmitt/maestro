@@ -9,17 +9,26 @@ export async function createStatus(
 	projectId: string,
 	group: string,
 	name: string,
-	isDefault?: boolean
+	isDefault?: boolean,
+	statusPrompts?: string[]
 ): Promise<Status> {
-	return tauriInvoke<Status>('create_status', { projectId, group, name, isDefault });
+	return tauriInvoke<Status>('create_status', { projectId, group, name, isDefault, statusPrompts });
 }
 
 export async function updateStatus(
 	projectId: string,
 	id: string,
-	updates: { name?: string; isDefault?: boolean }
+	updates: { name?: string; isDefault?: boolean; statusPrompts?: string[] }
 ): Promise<Status> {
 	return tauriInvoke<Status>('update_status', { projectId, id, ...updates });
+}
+
+export async function updateStatusPrompts(
+	projectId: string,
+	id: string,
+	statusPrompts: string[]
+): Promise<Status> {
+	return updateStatus(projectId, id, { statusPrompts });
 }
 
 export async function deleteStatus(projectId: string, id: string): Promise<void> {

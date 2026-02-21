@@ -12,6 +12,7 @@ pub struct Status {
     pub name: String,
     pub sort_order: i32,
     pub is_default: bool,
+    pub status_prompts: Vec<String>,
     pub created_at: String,
 }
 
@@ -25,10 +26,30 @@ fn validate_group(group: &str) -> Result<(), String> {
     }
 }
 
+pub fn default_status_prompts_for_group(group: &str) -> Vec<String> {
+    match group {
+        "Backlog" => vec!["brainstorming".to_string()],
+        "Started" => vec![
+            "tdd".to_string(),
+            "systematic-debugging".to_string(),
+            "verification".to_string(),
+        ],
+        _ => vec![],
+    }
+}
+
+fn parse_status_prompts(json: &str) -> Vec<String> {
+    serde_json::from_str(json).unwrap_or_default()
+}
+
+fn serialize_status_prompts(prompts: &[String]) -> String {
+    serde_json::to_string(prompts).unwrap_or_else(|_| "[]".to_string())
+}
+
 fn query_statuses(conn: &rusqlite::Connection, project_id: &str) -> Result<Vec<Status>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, \"group\", name, sort_order, is_default, created_at \
+            "SELECT id, project_id, \"group\", name, sort_order, is_default, status_prompts, created_at \
              FROM statuses WHERE project_id = ?1 \
              ORDER BY CASE \"group\" \
                 WHEN 'Backlog' THEN 0 \
@@ -42,6 +63,7 @@ fn query_statuses(conn: &rusqlite::Connection, project_id: &str) -> Result<Vec<S
 
     let rows = stmt
         .query_map(rusqlite::params![project_id], |row| {
+            let prompts_json: String = row.get(6)?;
             Ok(Status {
                 id: row.get(0)?,
                 project_id: row.get(1)?,
@@ -49,7 +71,8 @@ fn query_statuses(conn: &rusqlite::Connection, project_id: &str) -> Result<Vec<S
                 name: row.get(3)?,
                 sort_order: row.get(4)?,
                 is_default: row.get(5)?,
-                created_at: row.get(6)?,
+                status_prompts: parse_status_prompts(&prompts_json),
+                created_at: row.get(7)?,
             })
         })
         .map_err(|e| format!("Failed to query statuses: {e}"))?;
@@ -76,6 +99,7 @@ pub fn create_status(
     group: String,
     name: String,
     is_default: Option<bool>,
+    status_prompts: Option<Vec<String>>,
 ) -> Result<Status, String> {
     validate_group(&group)?;
 
@@ -95,6 +119,8 @@ pub fn create_status(
         let now = chrono::Utc::now().to_rfc3339();
         let sort_order = max_order + 1;
         let set_default = is_default.unwrap_or(false);
+        let prompts_val = status_prompts.unwrap_or_else(|| default_status_prompts_for_group(&group));
+        let prompts_json = serialize_status_prompts(&prompts_val);
 
         if set_default {
             conn.execute(
@@ -105,9 +131,9 @@ pub fn create_status(
         }
 
         conn.execute(
-            "INSERT INTO statuses (id, project_id, \"group\", name, sort_order, is_default, created_at) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            rusqlite::params![id, project_id, group, name, sort_order, set_default, now],
+            "INSERT INTO statuses (id, project_id, \"group\", name, sort_order, is_default, status_prompts, created_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![id, project_id, group, name, sort_order, set_default, prompts_json, now],
         )
         .map_err(|e| format!("Failed to create status: {e}"))?;
 
@@ -118,6 +144,7 @@ pub fn create_status(
             name,
             sort_order,
             is_default: set_default,
+            status_prompts: prompts_val,
             created_at: now,
         })
     })
@@ -130,6 +157,7 @@ pub fn update_status(
     id: String,
     name: Option<String>,
     is_default: Option<bool>,
+    status_prompts: Option<Vec<String>>,
 ) -> Result<Status, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let db = open_project_db(&base_path, &project_id)?;
@@ -137,10 +165,11 @@ pub fn update_status(
     db.with_conn(|conn| {
         let existing = conn
             .query_row(
-                "SELECT id, project_id, \"group\", name, sort_order, is_default, created_at \
+                "SELECT id, project_id, \"group\", name, sort_order, is_default, status_prompts, created_at \
                  FROM statuses WHERE id = ?1 AND project_id = ?2",
                 rusqlite::params![id, project_id],
                 |row| {
+                    let prompts_json: String = row.get(6)?;
                     Ok(Status {
                         id: row.get(0)?,
                         project_id: row.get(1)?,
@@ -148,7 +177,8 @@ pub fn update_status(
                         name: row.get(3)?,
                         sort_order: row.get(4)?,
                         is_default: row.get(5)?,
-                        created_at: row.get(6)?,
+                        status_prompts: parse_status_prompts(&prompts_json),
+                        created_at: row.get(7)?,
                     })
                 },
             )
@@ -156,6 +186,8 @@ pub fn update_status(
 
         let new_name = name.unwrap_or(existing.name);
         let new_default = is_default.unwrap_or(existing.is_default);
+        let new_prompts = status_prompts.unwrap_or(existing.status_prompts);
+        let new_prompts_json = serialize_status_prompts(&new_prompts);
 
         if new_default && !existing.is_default {
             conn.execute(
@@ -166,8 +198,8 @@ pub fn update_status(
         }
 
         conn.execute(
-            "UPDATE statuses SET name = ?1, is_default = ?2 WHERE id = ?3",
-            rusqlite::params![new_name, new_default, id],
+            "UPDATE statuses SET name = ?1, is_default = ?2, status_prompts = ?3 WHERE id = ?4",
+            rusqlite::params![new_name, new_default, new_prompts_json, id],
         )
         .map_err(|e| format!("Failed to update status: {e}"))?;
 
@@ -178,6 +210,7 @@ pub fn update_status(
             name: new_name,
             sort_order: existing.sort_order,
             is_default: new_default,
+            status_prompts: new_prompts,
             created_at: existing.created_at,
         })
     })

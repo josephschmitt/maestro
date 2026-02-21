@@ -81,13 +81,13 @@ function createSeedStore(): MockStore {
 }
 
 function createSeedStatuses(projectId: string, now: string): Status[] {
-	const defs: { group: StatusGroup; name: string; isDefault: boolean }[] = [
-		{ group: 'Backlog', name: 'Icebox', isDefault: true },
-		{ group: 'Unstarted', name: 'To Do', isDefault: true },
-		{ group: 'Started', name: 'In Progress', isDefault: true },
-		{ group: 'Started', name: 'In Review', isDefault: false },
-		{ group: 'Completed', name: 'Done', isDefault: true },
-		{ group: 'Cancelled', name: 'Cancelled', isDefault: true }
+	const defs: { group: StatusGroup; name: string; isDefault: boolean; status_prompts: string[] }[] = [
+		{ group: 'Backlog', name: 'Icebox', isDefault: true, status_prompts: ['brainstorming'] },
+		{ group: 'Unstarted', name: 'To Do', isDefault: true, status_prompts: [] },
+		{ group: 'Started', name: 'In Progress', isDefault: true, status_prompts: ['tdd', 'systematic-debugging', 'verification'] },
+		{ group: 'Started', name: 'In Review', isDefault: false, status_prompts: ['code-review', 'verification'] },
+		{ group: 'Completed', name: 'Done', isDefault: true, status_prompts: [] },
+		{ group: 'Cancelled', name: 'Cancelled', isDefault: true, status_prompts: [] }
 	];
 
 	return defs.map((d, i) => ({
@@ -97,6 +97,7 @@ function createSeedStatuses(projectId: string, now: string): Status[] {
 		name: d.name,
 		sort_order: i,
 		is_default: d.isDefault,
+		status_prompts: d.status_prompts,
 		created_at: now
 	}));
 }
