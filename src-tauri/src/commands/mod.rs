@@ -4,6 +4,7 @@ pub mod cards;
 pub mod config;
 pub mod conversations;
 pub mod directories;
+pub mod ipc;
 pub mod projects;
 pub mod questions;
 pub mod statuses;

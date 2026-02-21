@@ -6,7 +6,8 @@ dist/
 build/
 .svelte-kit/
 
-# Tauri
+# Rust / Tauri
+target/
 src-tauri/target/
 
 # Environment

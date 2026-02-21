@@ -3,11 +3,13 @@ mod config;
 mod db;
 pub mod executor;
 mod fs;
+pub mod ipc;
 
 use std::sync::Arc;
 
 use commands::config::ConfigState;
 use executor::AgentRegistry;
+use ipc::server::IpcServer;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -20,6 +22,7 @@ pub fn run() {
                 ConfigState::load().expect("failed to initialize global config");
             app.manage(config_state);
             app.manage(Arc::new(AgentRegistry::new()));
+            app.manage(Arc::new(IpcServer::new()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -72,6 +75,8 @@ pub fn run() {
             commands::worktrees::create_worktree,
             commands::worktrees::check_worktree_exists,
             commands::worktrees::get_card_worktree,
+            commands::ipc::start_ipc_server,
+            commands::ipc::stop_ipc_server,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

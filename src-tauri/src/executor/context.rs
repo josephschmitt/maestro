@@ -25,12 +25,13 @@ pub fn assemble_context(
     card: &CardInfo,
     working_dir: &str,
     artifact_contents: &[(String, String)],
+    socket_path: Option<&str>,
 ) -> Result<AgentContext, String> {
     let resolved = resolve_agent_config(global_config, project_agent_config, status_group);
 
     let (binary, base_flags) = resolve_binary_and_flags(global_config, &resolved)?;
 
-    let system_prompt = build_system_prompt(&resolved, card, artifact_contents);
+    let system_prompt = build_system_prompt(&resolved, card, artifact_contents, socket_path.is_some());
 
     let mut args = base_flags;
     args.push("--print".to_string());
@@ -43,6 +44,10 @@ pub fn assemble_context(
 
     let mut env = vec![("MAESTRO_CARD_ID".to_string(), card.id.clone())];
     env.push(("MAESTRO_WORKING_DIR".to_string(), working_dir.to_string()));
+
+    if let Some(socket) = socket_path {
+        env.push(("MAESTRO_SOCKET".to_string(), socket.to_string()));
+    }
 
     Ok(AgentContext {
         binary,
@@ -69,15 +74,22 @@ fn resolve_binary_and_flags(
     }
 }
 
+const MAESTRO_SKILL: &str = include_str!("../../../assets/maestro-skill.md");
+
 fn build_system_prompt(
     resolved: &ResolvedAgentConfig,
     card: &CardInfo,
     artifact_contents: &[(String, String)],
+    include_skill: bool,
 ) -> String {
     let mut parts = Vec::new();
 
     if let Some(ref instructions) = resolved.instructions {
         parts.push(instructions.clone());
+    }
+
+    if include_skill {
+        parts.push(MAESTRO_SKILL.to_string());
     }
 
     parts.push(format!("# Task: {}", card.title));
@@ -155,7 +167,7 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[])
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None)
                 .unwrap();
 
         assert_eq!(ctx.binary, "claude");
@@ -182,7 +194,7 @@ mod tests {
         };
 
         let ctx =
-            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[])
+            assemble_context(&config, &serde_json::json!({}), "Backlog", &card, "/tmp/work", &[], None)
                 .unwrap();
 
         assert!(ctx.system_prompt.contains("Parent Card: Parent Feature"));
@@ -201,7 +213,7 @@ mod tests {
         };
 
         let project_config = serde_json::json!({ "agent": "nonexistent" });
-        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work", &[]);
+        let result = assemble_context(&config, &project_config, "Backlog", &card, "/tmp/work", &[], None);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not found"));
     }
@@ -229,6 +241,7 @@ mod tests {
             &card,
             "/tmp/work",
             &artifacts,
+            None,
         )
         .unwrap();
 
