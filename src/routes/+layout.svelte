@@ -23,6 +23,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { resolve } from '$app/paths';
 	import FocusRegion from '$lib/focus/region.svelte';
+	import { sidebarWidth } from '$lib/stores/sidebar.js';
 
 	interface CrashedAgent {
 		workspace_id: string;
@@ -39,9 +40,43 @@
 	let crashedAgents = $state<CrashedAgent[]>([]);
 	let cleanupFns: (() => void)[] = [];
 
+	let isResizing = $state(false);
+	let startX = 0;
+	let startWidth = 0;
+
+	function handleResizeStart(e: MouseEvent) {
+		e.preventDefault();
+		isResizing = true;
+		startX = e.clientX;
+		startWidth = $sidebarWidth;
+		document.body.style.cursor = 'col-resize';
+		document.body.style.userSelect = 'none';
+	}
+
+	function handleResizeMove(e: MouseEvent) {
+		if (!isResizing) return;
+		const delta = e.clientX - startX;
+		sidebarWidth.setWidth(startWidth + delta);
+	}
+
+	function handleResizeEnd() {
+		if (!isResizing) return;
+		isResizing = false;
+		document.body.style.cursor = '';
+		document.body.style.userSelect = '';
+	}
+
 	onMount(() => {
 		initializeProject();
 		setupTauriListeners();
+
+		document.addEventListener('mousemove', handleResizeMove);
+		document.addEventListener('mouseup', handleResizeEnd);
+
+		return () => {
+			document.removeEventListener('mousemove', handleResizeMove);
+			document.removeEventListener('mouseup', handleResizeEnd);
+		};
 	});
 
 	onDestroy(() => {
@@ -129,7 +164,8 @@
 <div class="flex h-screen w-screen overflow-hidden">
 	<FocusRegion region="sidebar">
 		<aside
-			class="flex w-56 shrink-0 flex-col border-r border-border bg-transparent text-sidebar-foreground"
+			class="relative flex shrink-0 flex-col border-r border-border bg-transparent text-sidebar-foreground"
+			style="width: {$sidebarWidth}px"
 		>
 			<div
 				data-tauri-drag-region
@@ -156,6 +192,19 @@
 					</a>
 				</div>
 			{/if}
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<div
+				role="separator"
+				aria-label="Resize sidebar"
+				aria-orientation="vertical"
+				tabindex="0"
+				class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/20 active:bg-primary/30 {isResizing ? 'bg-primary/30' : ''}"
+				onmousedown={handleResizeStart}
+				onkeydown={(e) => {
+					if (e.key === 'ArrowLeft') sidebarWidth.setWidth($sidebarWidth - 10);
+					if (e.key === 'ArrowRight') sidebarWidth.setWidth($sidebarWidth + 10);
+				}}
+			></div>
 		</aside>
 	</FocusRegion>
 
