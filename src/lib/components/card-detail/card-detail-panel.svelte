@@ -126,8 +126,19 @@
 			</div>
 		{:else}
 			<div class="flex h-full flex-col">
-				<!-- Close button -->
-				<div class="flex items-center justify-end border-b border-border px-4 py-2">
+				<!-- Header with back/close buttons -->
+				<div class="flex items-center justify-between border-b border-border px-4 py-2">
+					<div>
+						{#if card.parent_id}
+							<button
+								class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+								onclick={() => onnavigate(card.parent_id!)}
+							>
+								<ArrowLeftIcon size={14} />
+								Back to parent
+							</button>
+						{/if}
+					</div>
 					<button
 						class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
 						onclick={onclose}
