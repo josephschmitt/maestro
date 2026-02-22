@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
 use crate::commands::projects::open_project_db;
+use crate::executor::{EventBus, MaestroEvent};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Conversation {
@@ -94,11 +97,16 @@ pub fn create_conversation_inner(
 #[tauri::command]
 pub fn create_conversation(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     card_id: String,
     agent_type: String,
 ) -> Result<Conversation, String> {
-    create_conversation_inner(&config, &project_id, &card_id, &agent_type)
+    let result = create_conversation_inner(&config, &project_id, &card_id, &agent_type)?;
+    event_bus.emit_maestro(MaestroEvent::ConversationsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn list_conversations_inner(
@@ -183,12 +191,17 @@ pub fn create_message_inner(
 #[tauri::command]
 pub fn create_message(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     conversation_id: String,
     role: String,
     content: String,
 ) -> Result<ConversationMessage, String> {
-    create_message_inner(&config, &project_id, &conversation_id, &role, &content)
+    let result = create_message_inner(&config, &project_id, &conversation_id, &role, &content)?;
+    event_bus.emit_maestro(MaestroEvent::ConversationsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn list_messages_inner(

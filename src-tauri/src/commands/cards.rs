@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
 use crate::commands::projects::open_project_db;
+use crate::executor::{EventBus, MaestroEvent};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CardWithStatus {
@@ -134,6 +137,7 @@ pub fn create_card_inner(
 #[tauri::command]
 pub fn create_card(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     title: String,
     description: Option<String>,
@@ -141,7 +145,11 @@ pub fn create_card(
     parent_id: Option<String>,
     status_id: Option<String>,
 ) -> Result<CardWithStatus, String> {
-    create_card_inner(&config, &project_id, &title, description, labels, parent_id, status_id)
+    let result = create_card_inner(&config, &project_id, &title, description, labels, parent_id, status_id)?;
+    event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn get_card_inner(
@@ -224,13 +232,18 @@ pub fn update_card_inner(
 #[tauri::command]
 pub fn update_card(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
     title: Option<String>,
     description: Option<String>,
     labels: Option<Vec<String>>,
 ) -> Result<CardWithStatus, String> {
-    update_card_inner(&config, &project_id, &id, title, description, labels)
+    let result = update_card_inner(&config, &project_id, &id, title, description, labels)?;
+    event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn delete_card_inner(
@@ -267,10 +280,15 @@ pub fn delete_card_inner(
 #[tauri::command]
 pub fn delete_card(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
-    delete_card_inner(&config, &project_id, &id)
+    delete_card_inner(&config, &project_id, &id)?;
+    event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(())
 }
 
 pub fn list_cards_inner(
@@ -438,12 +456,17 @@ pub fn move_card_inner(
 #[tauri::command]
 pub fn move_card(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
     target_status_id: String,
     target_sort_order: i32,
 ) -> Result<CardWithStatus, String> {
-    move_card_inner(&config, &project_id, &id, &target_status_id, target_sort_order)
+    let result = move_card_inner(&config, &project_id, &id, &target_status_id, target_sort_order)?;
+    event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn reorder_cards_inner(
@@ -518,11 +541,16 @@ pub fn reorder_cards_inner(
 #[tauri::command]
 pub fn reorder_cards(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     status_id: String,
     card_ids: Vec<String>,
 ) -> Result<Vec<CardWithStatus>, String> {
-    reorder_cards_inner(&config, &project_id, &status_id, &card_ids)
+    let result = reorder_cards_inner(&config, &project_id, &status_id, &card_ids)?;
+    event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 #[cfg(test)]

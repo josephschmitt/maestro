@@ -6,7 +6,7 @@ use tokio::time::Duration;
 
 use crate::commands::projects::open_project_db;
 
-use super::{AgentEvent, AgentRegistry, EventBus};
+use super::{AgentEvent, AgentRegistry, EventBus, MaestroEvent};
 
 use serde::{Deserialize, Serialize};
 
@@ -73,6 +73,10 @@ pub fn start_lifecycle_monitor_inner(
         };
         if let Some(ref bus) = event_bus {
             bus.emit(AgentEvent::Exit(event.clone()));
+            bus.emit_maestro(MaestroEvent::AgentExit(event.clone()));
+            bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+                project_id: project_id.clone(),
+            });
         }
         if let Some(ref handle) = app {
             let _ = handle.emit(&format!("agent-exit-{}", workspace_id), &event);

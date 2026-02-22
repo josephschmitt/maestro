@@ -11,7 +11,7 @@ use std::sync::Arc;
 use commands::config::ConfigState;
 use executor::monitor::start_pid_monitor;
 use executor::reattach::startup_scan;
-use executor::AgentRegistry;
+use executor::{AgentRegistry, EventBus};
 use ipc::server::IpcServer;
 use tauri::Manager;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
@@ -30,6 +30,7 @@ pub fn run() {
                 .expect("failed to resolve base path");
 
             let registry = Arc::new(AgentRegistry::new());
+            let event_bus = Arc::new(EventBus::new());
 
             let scan_result = startup_scan(app.handle(), &base_path);
             for ws in &scan_result.reattached {
@@ -47,12 +48,14 @@ pub fn run() {
 
             start_pid_monitor(
                 app.handle().clone(),
+                Some(Arc::clone(&event_bus)),
                 Arc::clone(&registry),
                 base_path,
             );
 
             app.manage(config_state);
             app.manage(registry);
+            app.manage(event_bus);
             app.manage(Arc::new(IpcServer::new()));
 
             #[cfg(target_os = "macos")]

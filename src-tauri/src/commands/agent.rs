@@ -9,7 +9,7 @@ use crate::executor::context::{assemble_context, CardInfo};
 use crate::executor::lifecycle::{start_lifecycle_monitor_inner, stop_agent_process};
 use crate::executor::spawn::spawn_agent;
 use crate::executor::stream::{start_stderr_streaming_inner, start_stdin_forwarding, start_stdout_streaming_inner};
-use crate::executor::{AgentHandle, AgentRegistry, EventBus};
+use crate::executor::{AgentHandle, AgentRegistry, EventBus, MaestroEvent};
 use crate::fs::worktrees as worktree_fs;
 use crate::ipc::server::IpcServer;
 
@@ -262,6 +262,7 @@ pub async fn launch_agent_inner(
 pub async fn launch_agent(
     app: AppHandle,
     config: State<'_, ConfigState>,
+    event_bus: State<'_, Arc<EventBus>>,
     registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
     card_id: String,
@@ -270,9 +271,9 @@ pub async fn launch_agent(
     branch_name: Option<String>,
     repo_path: Option<String>,
 ) -> Result<AgentWorkspace, String> {
-    launch_agent_inner(
+    let result = launch_agent_inner(
         Some(app),
-        None,
+        Some(Arc::clone(&event_bus)),
         &config,
         &registry,
         &project_id,
@@ -281,7 +282,11 @@ pub async fn launch_agent(
         worktree_path,
         branch_name,
         repo_path,
-    ).await
+    ).await?;
+    event_bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub async fn send_agent_input_inner(
@@ -342,11 +347,16 @@ pub async fn stop_agent_inner(
 #[tauri::command]
 pub async fn stop_agent(
     config: State<'_, ConfigState>,
+    event_bus: State<'_, Arc<EventBus>>,
     registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
     workspace_id: String,
 ) -> Result<AgentWorkspace, String> {
-    stop_agent_inner(&config, &registry, &project_id, &workspace_id).await
+    let result = stop_agent_inner(&config, &registry, &project_id, &workspace_id).await?;
+    event_bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn list_workspaces_inner(
@@ -615,20 +625,25 @@ pub async fn resume_agent_inner(
 pub async fn resume_agent(
     app: AppHandle,
     config: State<'_, ConfigState>,
+    event_bus: State<'_, Arc<EventBus>>,
     registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
     workspace_id: String,
     card_id: String,
 ) -> Result<AgentWorkspace, String> {
-    resume_agent_inner(
+    let result = resume_agent_inner(
         Some(app),
-        None,
+        Some(Arc::clone(&event_bus)),
         &config,
         &registry,
         &project_id,
         &workspace_id,
         &card_id,
-    ).await
+    ).await?;
+    event_bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn list_running_workspaces_inner(
@@ -750,14 +765,18 @@ pub async fn stop_all_agents_inner(
 #[tauri::command]
 pub async fn stop_all_agents(
     config: State<'_, ConfigState>,
+    event_bus: State<'_, Arc<EventBus>>,
     registry: State<'_, Arc<AgentRegistry>>,
 ) -> Result<(), String> {
-    stop_all_agents_inner(&config, &registry).await
+    stop_all_agents_inner(&config, &registry).await?;
+    event_bus.emit_maestro(MaestroEvent::ProjectsChanged);
+    Ok(())
 }
 
 #[tauri::command]
 pub fn archive_card_workspaces(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     card_id: String,
 ) -> Result<(), String> {
@@ -772,7 +791,11 @@ pub fn archive_card_workspaces(
         )
         .map_err(|e| format!("Failed to archive workspaces: {e}"))?;
         Ok(())
-    })
+    })?;
+    event_bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(())
 }
 
 #[cfg(test)]

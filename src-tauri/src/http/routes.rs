@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use super::error::{extract_arg, extract_optional_arg, AppError};
 use super::server::AppState;
+use crate::executor::MaestroEvent;
 
 use crate::commands::{
     agent::{
@@ -156,6 +157,7 @@ fn dispatch_config_get_global(state: &AppState, _args: &Value) -> Result<Value, 
 fn dispatch_config_set_last_project(state: &AppState, args: &Value) -> Result<Value, AppError> {
     let project_id: String = extract_arg(args, "project_id")?;
     set_last_project_inner(&state.config, &project_id)?;
+    state.event_bus.emit_maestro(MaestroEvent::ConfigChanged);
     Ok(serde_json::json!(null))
 }
 
@@ -173,6 +175,7 @@ fn dispatch_config_resolve(state: &AppState, args: &Value) -> Result<Value, AppE
 fn dispatch_projects_create(state: &AppState, args: &Value) -> Result<Value, AppError> {
     let name: String = extract_arg(args, "name")?;
     let result = create_project_inner(&state.config, &name)?;
+    state.event_bus.emit_maestro(MaestroEvent::ProjectsChanged);
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -193,12 +196,14 @@ fn dispatch_projects_update(state: &AppState, args: &Value) -> Result<Value, App
     let agent_config: Option<Value> = extract_optional_arg(args, "agent_config")?;
     let base_path: Option<String> = extract_optional_arg(args, "base_path")?;
     let result = update_project_inner(&state.config, &id, name, agent_config, base_path)?;
+    state.event_bus.emit_maestro(MaestroEvent::ProjectsChanged);
     Ok(serde_json::to_value(result).unwrap())
 }
 
 fn dispatch_projects_delete(state: &AppState, args: &Value) -> Result<Value, AppError> {
     let id: String = extract_arg(args, "id")?;
     delete_project_inner(&state.config, &id)?;
+    state.event_bus.emit_maestro(MaestroEvent::ProjectsChanged);
     Ok(serde_json::json!(null))
 }
 
@@ -220,6 +225,9 @@ fn dispatch_statuses_create(state: &AppState, args: &Value) -> Result<Value, App
     let status_prompts: Option<Vec<String>> = extract_optional_arg(args, "status_prompts")?;
     let result =
         create_status_inner(&state.config, &project_id, &group, &name, is_default, status_prompts)?;
+    state.event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -231,6 +239,9 @@ fn dispatch_statuses_update(state: &AppState, args: &Value) -> Result<Value, App
     let status_prompts: Option<Vec<String>> = extract_optional_arg(args, "status_prompts")?;
     let result =
         update_status_inner(&state.config, &project_id, &id, name, is_default, status_prompts)?;
+    state.event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -238,6 +249,9 @@ fn dispatch_statuses_delete(state: &AppState, args: &Value) -> Result<Value, App
     let project_id: String = extract_arg(args, "project_id")?;
     let id: String = extract_arg(args, "id")?;
     delete_status_inner(&state.config, &project_id, &id)?;
+    state.event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::json!(null))
 }
 
@@ -246,6 +260,9 @@ fn dispatch_statuses_reorder(state: &AppState, args: &Value) -> Result<Value, Ap
     let group: String = extract_arg(args, "group")?;
     let status_ids: Vec<String> = extract_arg(args, "status_ids")?;
     let result = reorder_statuses_inner(&state.config, &project_id, &group, &status_ids)?;
+    state.event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -269,6 +286,9 @@ fn dispatch_cards_create(state: &AppState, args: &Value) -> Result<Value, AppErr
         parent_id,
         status_id,
     )?;
+    state.event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -286,6 +306,9 @@ fn dispatch_cards_update(state: &AppState, args: &Value) -> Result<Value, AppErr
     let description: Option<String> = extract_optional_arg(args, "description")?;
     let labels: Option<Vec<String>> = extract_optional_arg(args, "labels")?;
     let result = update_card_inner(&state.config, &project_id, &id, title, description, labels)?;
+    state.event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -293,6 +316,9 @@ fn dispatch_cards_delete(state: &AppState, args: &Value) -> Result<Value, AppErr
     let project_id: String = extract_arg(args, "project_id")?;
     let id: String = extract_arg(args, "id")?;
     delete_card_inner(&state.config, &project_id, &id)?;
+    state.event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::json!(null))
 }
 
@@ -316,6 +342,9 @@ fn dispatch_cards_move(state: &AppState, args: &Value) -> Result<Value, AppError
     let target_sort_order: i32 = extract_arg(args, "target_sort_order")?;
     let result =
         move_card_inner(&state.config, &project_id, &id, &target_status_id, target_sort_order)?;
+    state.event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -324,6 +353,9 @@ fn dispatch_cards_reorder(state: &AppState, args: &Value) -> Result<Value, AppEr
     let status_id: String = extract_arg(args, "status_id")?;
     let card_ids: Vec<String> = extract_arg(args, "card_ids")?;
     let result = reorder_cards_inner(&state.config, &project_id, &status_id, &card_ids)?;
+    state.event_bus.emit_maestro(MaestroEvent::CardsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -337,6 +369,9 @@ fn dispatch_questions_create(state: &AppState, args: &Value) -> Result<Value, Ap
     let question: String = extract_arg(args, "question")?;
     let source: String = extract_arg(args, "source")?;
     let result = create_question_inner(&state.config, &project_id, &card_id, &question, &source)?;
+    state.event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -353,6 +388,9 @@ fn dispatch_questions_resolve(state: &AppState, args: &Value) -> Result<Value, A
     let resolution: Option<String> = extract_optional_arg(args, "resolution")?;
     let resolved_by: String = extract_arg(args, "resolved_by")?;
     let result = resolve_question_inner(&state.config, &project_id, &id, resolution, &resolved_by)?;
+    state.event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -360,6 +398,9 @@ fn dispatch_questions_unresolve(state: &AppState, args: &Value) -> Result<Value,
     let project_id: String = extract_arg(args, "project_id")?;
     let id: String = extract_arg(args, "id")?;
     let result = unresolve_question_inner(&state.config, &project_id, &id)?;
+    state.event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -367,6 +408,9 @@ fn dispatch_questions_delete(state: &AppState, args: &Value) -> Result<Value, Ap
     let project_id: String = extract_arg(args, "project_id")?;
     let id: String = extract_arg(args, "id")?;
     delete_question_inner(&state.config, &project_id, &id)?;
+    state.event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::json!(null))
 }
 
@@ -389,6 +433,9 @@ fn dispatch_artifacts_create(state: &AppState, args: &Value) -> Result<Value, Ap
     let created_by: String = extract_arg(args, "created_by")?;
     let result =
         create_artifact_inner(&state.config, &project_id, &card_id, &name, &content, &created_by)?;
+    state.event_bus.emit_maestro(MaestroEvent::ArtifactsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -404,6 +451,9 @@ fn dispatch_artifacts_update(state: &AppState, args: &Value) -> Result<Value, Ap
     let id: String = extract_arg(args, "id")?;
     let content: String = extract_arg(args, "content")?;
     let result = update_artifact_inner(&state.config, &project_id, &id, &content)?;
+    state.event_bus.emit_maestro(MaestroEvent::ArtifactsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -411,6 +461,9 @@ fn dispatch_artifacts_delete(state: &AppState, args: &Value) -> Result<Value, Ap
     let project_id: String = extract_arg(args, "project_id")?;
     let id: String = extract_arg(args, "id")?;
     delete_artifact_inner(&state.config, &project_id, &id)?;
+    state.event_bus.emit_maestro(MaestroEvent::ArtifactsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::json!(null))
 }
 
@@ -430,6 +483,9 @@ fn dispatch_directories_add(state: &AppState, args: &Value) -> Result<Value, App
     let path: String = extract_arg(args, "path")?;
     let label: String = extract_arg(args, "label")?;
     let result = add_linked_directory_inner(&state.config, &project_id, &path, &label)?;
+    state.event_bus.emit_maestro(MaestroEvent::DirectoriesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -437,6 +493,9 @@ fn dispatch_directories_remove(state: &AppState, args: &Value) -> Result<Value, 
     let project_id: String = extract_arg(args, "project_id")?;
     let id: String = extract_arg(args, "id")?;
     remove_linked_directory_inner(&state.config, &project_id, &id)?;
+    state.event_bus.emit_maestro(MaestroEvent::DirectoriesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::json!(null))
 }
 
@@ -455,6 +514,9 @@ fn dispatch_conversations_create(state: &AppState, args: &Value) -> Result<Value
     let card_id: String = extract_arg(args, "card_id")?;
     let agent_type: String = extract_arg(args, "agent_type")?;
     let result = create_conversation_inner(&state.config, &project_id, &card_id, &agent_type)?;
+    state.event_bus.emit_maestro(MaestroEvent::ConversationsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -475,6 +537,9 @@ fn dispatch_conversations_create_message(
     let content: String = extract_arg(args, "content")?;
     let result =
         create_message_inner(&state.config, &project_id, &conversation_id, &role, &content)?;
+    state.event_bus.emit_maestro(MaestroEvent::ConversationsChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -567,6 +632,9 @@ async fn dispatch_agent_launch(state: &AppState, args: &Value) -> Result<Value, 
         repo_path,
     )
     .await?;
+    state.event_bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -581,6 +649,9 @@ async fn dispatch_agent_stop(state: &AppState, args: &Value) -> Result<Value, Ap
     let project_id: String = extract_arg(args, "project_id")?;
     let workspace_id: String = extract_arg(args, "workspace_id")?;
     let result = stop_agent_inner(&state.config, &state.registry, &project_id, &workspace_id).await?;
+    state.event_bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 
@@ -599,6 +670,9 @@ async fn dispatch_agent_resume(state: &AppState, args: &Value) -> Result<Value, 
         &card_id,
     )
     .await?;
+    state.event_bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+        project_id: project_id.clone(),
+    });
     Ok(serde_json::to_value(result).unwrap())
 }
 

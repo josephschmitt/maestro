@@ -1,9 +1,12 @@
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
 use crate::commands::projects::open_project_db;
+use crate::executor::{EventBus, MaestroEvent};
 use crate::fs::artifacts::{
     delete_artifact_file, ensure_artifact_dir, name_to_slug, read_artifact_file,
     write_artifact_file,
@@ -126,13 +129,18 @@ pub fn create_artifact_inner(
 #[tauri::command]
 pub fn create_artifact(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     card_id: String,
     name: String,
     content: String,
     created_by: String,
 ) -> Result<Artifact, String> {
-    create_artifact_inner(&config, &project_id, &card_id, &name, &content, &created_by)
+    let result = create_artifact_inner(&config, &project_id, &card_id, &name, &content, &created_by)?;
+    event_bus.emit_maestro(MaestroEvent::ArtifactsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn read_artifact_inner(
@@ -206,11 +214,16 @@ pub fn update_artifact_inner(
 #[tauri::command]
 pub fn update_artifact(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
     content: String,
 ) -> Result<Artifact, String> {
-    update_artifact_inner(&config, &project_id, &id, &content)
+    let result = update_artifact_inner(&config, &project_id, &id, &content)?;
+    event_bus.emit_maestro(MaestroEvent::ArtifactsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn delete_artifact_inner(
@@ -251,10 +264,15 @@ pub fn delete_artifact_inner(
 #[tauri::command]
 pub fn delete_artifact(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
-    delete_artifact_inner(&config, &project_id, &id)
+    delete_artifact_inner(&config, &project_id, &id)?;
+    event_bus.emit_maestro(MaestroEvent::ArtifactsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(())
 }
 
 pub fn list_artifacts_inner(

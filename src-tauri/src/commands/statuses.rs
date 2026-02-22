@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
 use crate::commands::projects::open_project_db;
+use crate::executor::{EventBus, MaestroEvent};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Status {
@@ -159,13 +162,18 @@ pub fn create_status_inner(
 #[tauri::command]
 pub fn create_status(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     group: String,
     name: String,
     is_default: Option<bool>,
     status_prompts: Option<Vec<String>>,
 ) -> Result<Status, String> {
-    create_status_inner(&config, &project_id, &group, &name, is_default, status_prompts)
+    let result = create_status_inner(&config, &project_id, &group, &name, is_default, status_prompts)?;
+    event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn update_status_inner(
@@ -236,13 +244,18 @@ pub fn update_status_inner(
 #[tauri::command]
 pub fn update_status(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
     name: Option<String>,
     is_default: Option<bool>,
     status_prompts: Option<Vec<String>>,
 ) -> Result<Status, String> {
-    update_status_inner(&config, &project_id, &id, name, is_default, status_prompts)
+    let result = update_status_inner(&config, &project_id, &id, name, is_default, status_prompts)?;
+    event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn delete_status_inner(
@@ -341,10 +354,15 @@ pub fn delete_status_inner(
 #[tauri::command]
 pub fn delete_status(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
-    delete_status_inner(&config, &project_id, &id)
+    delete_status_inner(&config, &project_id, &id)?;
+    event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(())
 }
 
 pub fn reorder_statuses_inner(
@@ -387,11 +405,16 @@ pub fn reorder_statuses_inner(
 #[tauri::command]
 pub fn reorder_statuses(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     group: String,
     status_ids: Vec<String>,
 ) -> Result<Vec<Status>, String> {
-    reorder_statuses_inner(&config, &project_id, &group, &status_ids)
+    let result = reorder_statuses_inner(&config, &project_id, &group, &status_ids)?;
+    event_bus.emit_maestro(MaestroEvent::StatusesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 #[cfg(test)]
