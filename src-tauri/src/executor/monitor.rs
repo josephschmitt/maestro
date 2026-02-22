@@ -21,7 +21,7 @@ pub fn start_pid_monitor(
     registry: Arc<AgentRegistry>,
     base_path: PathBuf,
 ) {
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let mut tick = interval(Duration::from_secs(5));
         loop {
             tick.tick().await;
