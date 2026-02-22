@@ -1,0 +1,112 @@
+name: Update Homebrew
+
+on:
+  workflow_run:
+    workflows: ["Release Build"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  update-homebrew:
+    name: Update Homebrew Cask
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Get release info
+        id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            const version = release.data.tag_name.replace(/^v/, '');
+            const assets = release.data.assets;
+
+            const arm64Dmg = assets.find(a => a.name.includes('arm64') && a.name.endsWith('.dmg'));
+            const x64Dmg = assets.find(a => a.name.includes('x64') && a.name.endsWith('.dmg'));
+
+            if (!arm64Dmg || !x64Dmg) {
+              throw new Error('Could not find both DMG assets');
+            }
+
+            core.setOutput('version', version);
+            core.setOutput('arm64_url', arm64Dmg.browser_download_url);
+            core.setOutput('x64_url', x64Dmg.browser_download_url);
+
+      - name: Download DMGs and calculate checksums
+        env:
+          ARM64_URL: ${{ steps.release.outputs.arm64_url }}
+          X64_URL: ${{ steps.release.outputs.x64_url }}
+        run: |
+          curl -L -o arm64.dmg "$ARM64_URL"
+          curl -L -o x64.dmg "$X64_URL"
+
+          ARM64_SHA=$(shasum -a 256 arm64.dmg | cut -d ' ' -f 1)
+          X64_SHA=$(shasum -a 256 x64.dmg | cut -d ' ' -f 1)
+
+          echo "arm64_sha=$ARM64_SHA" >> $GITHUB_OUTPUT
+        id: checksums
+
+      - name: Calculate x64 checksum
+        run: |
+          X64_SHA=$(shasum -a 256 x64.dmg | cut -d ' ' -f 1)
+          echo "x64_sha=$X64_SHA" >> $GITHUB_OUTPUT
+        id: x64_checksum
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: josephschmitt/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update cask formula
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          ARM64_SHA: ${{ steps.checksums.outputs.arm64_sha }}
+          X64_SHA: ${{ steps.x64_checksum.outputs.x64_sha }}
+          ARM64_URL: ${{ steps.release.outputs.arm64_url }}
+          X64_URL: ${{ steps.release.outputs.x64_url }}
+        run: |
+          mkdir -p homebrew-tap/Casks
+          cat > homebrew-tap/Casks/maestro.rb << EOF
+          cask "maestro" do
+            version "${VERSION}"
+
+            on_arm do
+              sha256 "${ARM64_SHA}"
+              url "${ARM64_URL}"
+            end
+
+            on_intel do
+              sha256 "${X64_SHA}"
+              url "${X64_URL}"
+            end
+
+            name "Maestro"
+            desc "Local-first kanban board for orchestrating AI coding agents"
+            homepage "https://github.com/josephschmitt/maestro"
+
+            app "Maestro.app"
+
+            zap trash: [
+              "~/.maestro",
+              "~/Library/Application Support/com.maestro.dev",
+            ]
+          end
+          EOF
+
+      - name: Commit and push
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        working-directory: homebrew-tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/maestro.rb
+          git commit -m "Update maestro to ${VERSION}"
+          git push
