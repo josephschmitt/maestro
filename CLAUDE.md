@@ -125,3 +125,23 @@ Card status changes go through a transition engine that returns gates (warnings/
 - **Tauri commands:** Test manually via `npm run tauri dev`. Rust-side unit tests can use `cargo test` in `src-tauri/`.
 - **Web UI:** `npm run dev` for browser testing (some Tauri-specific features won't work in browser).
 - **Verify each phase's deliverables** before moving to the next.
+
+## Documentation
+
+When adding or changing features, keep documentation in sync:
+
+- **README.md** — Update if the change affects:
+  - Quick start instructions
+  - Configuration options (new settings, config.toml structure)
+  - CLI commands (new commands, changed arguments)
+  - Key features list
+  - Tech stack or project structure
+
+- **CONTRIBUTING.md** — Update if the change affects:
+  - Development setup requirements
+  - Build process
+  - Testing approach
+  - Code conventions
+  - Mock backend system
+
+Keep documentation concise. Don't document internal implementation details — focus on what users and contributors need to know.
