@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
 use crate::db::DbConnection;
+use crate::executor::{EventBus, MaestroEvent};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
@@ -159,9 +162,12 @@ pub fn create_project_inner(
 #[tauri::command]
 pub fn create_project(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     name: String,
 ) -> Result<Project, String> {
-    create_project_inner(&config, &name)
+    let result = create_project_inner(&config, &name)?;
+    event_bus.emit_maestro(MaestroEvent::ProjectsChanged);
+    Ok(result)
 }
 
 pub fn get_project_inner(
@@ -318,12 +324,15 @@ pub fn update_project_inner(
 #[tauri::command]
 pub fn update_project(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     id: String,
     name: Option<String>,
     agent_config: Option<serde_json::Value>,
     base_path: Option<String>,
 ) -> Result<Project, String> {
-    update_project_inner(&config, &id, name, agent_config, base_path)
+    let result = update_project_inner(&config, &id, name, agent_config, base_path)?;
+    event_bus.emit_maestro(MaestroEvent::ProjectsChanged);
+    Ok(result)
 }
 
 pub fn delete_project_inner(
@@ -353,9 +362,12 @@ pub fn delete_project_inner(
 #[tauri::command]
 pub fn delete_project(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     id: String,
 ) -> Result<(), String> {
-    delete_project_inner(&config, &id)
+    delete_project_inner(&config, &id)?;
+    event_bus.emit_maestro(MaestroEvent::ProjectsChanged);
+    Ok(())
 }
 
 #[cfg(test)]

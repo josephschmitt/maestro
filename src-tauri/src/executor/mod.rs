@@ -10,6 +10,8 @@ use std::sync::Mutex;
 use tokio::sync::{broadcast, mpsc};
 
 use lifecycle::AgentExitEvent;
+use monitor::AgentCrashedEvent;
+use serde::{Deserialize, Serialize};
 use stream::AgentOutputEvent;
 
 #[derive(Clone)]
@@ -18,22 +20,110 @@ pub enum AgentEvent {
     Exit(AgentExitEvent),
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentLogEvent {
+    pub card_id: String,
+    pub message: String,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "event_type", content = "data")]
+pub enum MaestroEvent {
+    #[serde(rename = "agent-output")]
+    AgentOutput(AgentOutputEvent),
+    #[serde(rename = "agent-exit")]
+    AgentExit(AgentExitEvent),
+    #[serde(rename = "agent-crashed")]
+    AgentCrashed(AgentCrashedEvent),
+    #[serde(rename = "agent-log")]
+    AgentLog(AgentLogEvent),
+
+    #[serde(rename = "cards-changed")]
+    CardsChanged { project_id: String },
+    #[serde(rename = "statuses-changed")]
+    StatusesChanged { project_id: String },
+    #[serde(rename = "questions-changed")]
+    QuestionsChanged { project_id: String },
+    #[serde(rename = "artifacts-changed")]
+    ArtifactsChanged { project_id: String },
+    #[serde(rename = "conversations-changed")]
+    ConversationsChanged { project_id: String },
+    #[serde(rename = "workspaces-changed")]
+    WorkspacesChanged { project_id: String },
+    #[serde(rename = "directories-changed")]
+    DirectoriesChanged { project_id: String },
+
+    #[serde(rename = "projects-changed")]
+    ProjectsChanged,
+    #[serde(rename = "config-changed")]
+    ConfigChanged,
+}
+
+impl MaestroEvent {
+    pub fn scope(&self) -> Option<&str> {
+        match self {
+            MaestroEvent::AgentOutput(e) => Some(&e.workspace_id),
+            MaestroEvent::AgentExit(e) => Some(&e.workspace_id),
+            MaestroEvent::AgentCrashed(e) => Some(&e.workspace_id),
+            MaestroEvent::AgentLog(_) => None,
+            MaestroEvent::CardsChanged { project_id } => Some(project_id),
+            MaestroEvent::StatusesChanged { project_id } => Some(project_id),
+            MaestroEvent::QuestionsChanged { project_id } => Some(project_id),
+            MaestroEvent::ArtifactsChanged { project_id } => Some(project_id),
+            MaestroEvent::ConversationsChanged { project_id } => Some(project_id),
+            MaestroEvent::WorkspacesChanged { project_id } => Some(project_id),
+            MaestroEvent::DirectoriesChanged { project_id } => Some(project_id),
+            MaestroEvent::ProjectsChanged => None,
+            MaestroEvent::ConfigChanged => None,
+        }
+    }
+
+    pub fn event_type(&self) -> &'static str {
+        match self {
+            MaestroEvent::AgentOutput(_) => "agent-output",
+            MaestroEvent::AgentExit(_) => "agent-exit",
+            MaestroEvent::AgentCrashed(_) => "agent-crashed",
+            MaestroEvent::AgentLog(_) => "agent-log",
+            MaestroEvent::CardsChanged { .. } => "cards-changed",
+            MaestroEvent::StatusesChanged { .. } => "statuses-changed",
+            MaestroEvent::QuestionsChanged { .. } => "questions-changed",
+            MaestroEvent::ArtifactsChanged { .. } => "artifacts-changed",
+            MaestroEvent::ConversationsChanged { .. } => "conversations-changed",
+            MaestroEvent::WorkspacesChanged { .. } => "workspaces-changed",
+            MaestroEvent::DirectoriesChanged { .. } => "directories-changed",
+            MaestroEvent::ProjectsChanged => "projects-changed",
+            MaestroEvent::ConfigChanged => "config-changed",
+        }
+    }
+}
+
 pub struct EventBus {
-    tx: broadcast::Sender<AgentEvent>,
+    agent_tx: broadcast::Sender<AgentEvent>,
+    maestro_tx: broadcast::Sender<MaestroEvent>,
 }
 
 impl EventBus {
     pub fn new() -> Self {
-        let (tx, _) = broadcast::channel(1024);
-        Self { tx }
+        let (agent_tx, _) = broadcast::channel(1024);
+        let (maestro_tx, _) = broadcast::channel(1024);
+        Self { agent_tx, maestro_tx }
     }
 
     pub fn emit(&self, event: AgentEvent) {
-        let _ = self.tx.send(event);
+        let _ = self.agent_tx.send(event);
+    }
+
+    pub fn emit_maestro(&self, event: MaestroEvent) {
+        let _ = self.maestro_tx.send(event);
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<AgentEvent> {
-        self.tx.subscribe()
+        self.agent_tx.subscribe()
+    }
+
+    pub fn subscribe_maestro(&self) -> broadcast::Receiver<MaestroEvent> {
+        self.maestro_tx.subscribe()
     }
 }
 

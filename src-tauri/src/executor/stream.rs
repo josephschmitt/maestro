@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use serde::{Deserialize, Serialize};
 
-use super::{AgentEvent, EventBus};
+use super::{AgentEvent, EventBus, MaestroEvent};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentOutputEvent {
@@ -43,6 +43,7 @@ pub fn start_stdout_streaming_inner(
             };
             if let Some(ref bus) = event_bus {
                 bus.emit(AgentEvent::Output(event.clone()));
+                bus.emit_maestro(MaestroEvent::AgentOutput(event.clone()));
             }
             if let Some(ref handle) = app {
                 let _ = handle.emit(&format!("agent-output-{}", workspace_id), &event);
@@ -76,6 +77,7 @@ pub fn start_stderr_streaming_inner(
             };
             if let Some(ref bus) = event_bus {
                 bus.emit(AgentEvent::Output(event.clone()));
+                bus.emit_maestro(MaestroEvent::AgentOutput(event.clone()));
             }
             if let Some(ref handle) = app {
                 let _ = handle.emit(&format!("agent-output-{}", workspace_id), &event);

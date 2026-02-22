@@ -6,6 +6,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixListener;
 use tokio::sync::Mutex;
 
+use crate::executor::EventBus;
 use crate::ipc::handler::handle_request;
 use crate::ipc::protocol::{IpcRequest, IpcResponse};
 
@@ -27,6 +28,7 @@ impl IpcServer {
     pub async fn start(
         &self,
         app: AppHandle,
+        event_bus: Option<Arc<EventBus>>,
         base_path: PathBuf,
         project_id: String,
     ) -> Result<PathBuf, String> {
@@ -45,7 +47,7 @@ impl IpcServer {
 
         let socket_path_clone = socket_path.clone();
         tokio::spawn(async move {
-            accept_loop(listener, app, base_path, project_id).await;
+            accept_loop(listener, app, event_bus, base_path, project_id).await;
             // Clean up socket file when the loop exits
             let _ = std::fs::remove_file(&socket_path_clone);
         });
@@ -71,6 +73,7 @@ impl IpcServer {
 async fn accept_loop(
     listener: UnixListener,
     app: AppHandle,
+    event_bus: Option<Arc<EventBus>>,
     base_path: PathBuf,
     project_id: String,
 ) {
@@ -78,11 +81,12 @@ async fn accept_loop(
         match listener.accept().await {
             Ok((stream, _addr)) => {
                 let app = app.clone();
+                let event_bus = event_bus.clone();
                 let base_path = base_path.clone();
                 let project_id = project_id.clone();
 
                 tokio::spawn(async move {
-                    handle_connection(stream, &app, &base_path, &project_id).await;
+                    handle_connection(stream, &app, event_bus, &base_path, &project_id).await;
                 });
             }
             Err(e) => {
@@ -99,6 +103,7 @@ async fn accept_loop(
 async fn handle_connection(
     stream: tokio::net::UnixStream,
     app: &AppHandle,
+    event_bus: Option<Arc<EventBus>>,
     base_path: &Path,
     project_id: &str,
 ) {
@@ -116,7 +121,7 @@ async fn handle_connection(
     }
 
     let response = match serde_json::from_str::<IpcRequest>(&line) {
-        Ok(request) => handle_request(app, &base_path.to_path_buf(), project_id, request),
+        Ok(request) => handle_request(app, event_bus, &base_path.to_path_buf(), project_id, request),
         Err(e) => IpcResponse::error(format!("Invalid request JSON: {e}")),
     };
 

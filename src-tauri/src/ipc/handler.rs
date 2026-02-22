@@ -1,23 +1,26 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter};
 
 use crate::commands::projects::open_project_db;
+use crate::executor::{AgentLogEvent, EventBus, MaestroEvent};
 use crate::fs::artifacts::{ensure_artifact_dir, name_to_slug, write_artifact_file};
 use crate::ipc::protocol::{IpcRequest, IpcResponse};
 
 pub fn handle_request(
     app: &AppHandle,
+    event_bus: Option<Arc<EventBus>>,
     base_path: &PathBuf,
     project_id: &str,
     request: IpcRequest,
 ) -> IpcResponse {
     match request.command.as_str() {
-        "question" => handle_question(app, base_path, project_id, &request),
-        "resolve-question" => handle_resolve_question(app, base_path, project_id, &request),
-        "add-artifact" => handle_add_artifact(app, base_path, project_id, &request),
-        "set-status" => handle_set_status(app, base_path, project_id, &request),
-        "log" => handle_log(app, base_path, project_id, &request),
+        "question" => handle_question(app, event_bus.as_ref(), base_path, project_id, &request),
+        "resolve-question" => handle_resolve_question(app, event_bus.as_ref(), base_path, project_id, &request),
+        "add-artifact" => handle_add_artifact(app, event_bus.as_ref(), base_path, project_id, &request),
+        "set-status" => handle_set_status(app, event_bus.as_ref(), base_path, project_id, &request),
+        "log" => handle_log(app, event_bus.as_ref(), base_path, project_id, &request),
         "get-card" => handle_get_card(base_path, project_id, &request),
         "get-artifacts" => handle_get_artifacts(base_path, project_id, &request),
         "get-parent" => handle_get_parent(base_path, project_id, &request),
@@ -27,6 +30,7 @@ pub fn handle_request(
 
 fn handle_question(
     app: &AppHandle,
+    event_bus: Option<&Arc<EventBus>>,
     base_path: &PathBuf,
     project_id: &str,
     request: &IpcRequest,
@@ -76,6 +80,11 @@ fn handle_question(
         });
 
         let _ = app.emit("question-created", &data);
+        if let Some(bus) = event_bus {
+            bus.emit_maestro(MaestroEvent::QuestionsChanged {
+                project_id: project_id.to_string(),
+            });
+        }
 
         Ok(IpcResponse::success(data))
     })
@@ -84,6 +93,7 @@ fn handle_question(
 
 fn handle_resolve_question(
     app: &AppHandle,
+    event_bus: Option<&Arc<EventBus>>,
     base_path: &PathBuf,
     project_id: &str,
     request: &IpcRequest,
@@ -126,6 +136,11 @@ fn handle_resolve_question(
         });
 
         let _ = app.emit("question-resolved", &data);
+        if let Some(bus) = event_bus {
+            bus.emit_maestro(MaestroEvent::QuestionsChanged {
+                project_id: project_id.to_string(),
+            });
+        }
 
         Ok(IpcResponse::success(data))
     })
@@ -134,6 +149,7 @@ fn handle_resolve_question(
 
 fn handle_add_artifact(
     app: &AppHandle,
+    event_bus: Option<&Arc<EventBus>>,
     base_path: &PathBuf,
     project_id: &str,
     request: &IpcRequest,
@@ -221,6 +237,11 @@ fn handle_add_artifact(
         });
 
         let _ = app.emit("artifact-added", &data);
+        if let Some(bus) = event_bus {
+            bus.emit_maestro(MaestroEvent::ArtifactsChanged {
+                project_id: project_id.to_string(),
+            });
+        }
 
         Ok(IpcResponse::success(data))
     })
@@ -229,6 +250,7 @@ fn handle_add_artifact(
 
 fn handle_set_status(
     app: &AppHandle,
+    event_bus: Option<&Arc<EventBus>>,
     base_path: &PathBuf,
     project_id: &str,
     request: &IpcRequest,
@@ -303,6 +325,11 @@ fn handle_set_status(
         });
 
         let _ = app.emit("card-status-changed", &data);
+        if let Some(bus) = event_bus {
+            bus.emit_maestro(MaestroEvent::CardsChanged {
+                project_id: project_id.to_string(),
+            });
+        }
 
         Ok(IpcResponse::success(data))
     })
@@ -311,6 +338,7 @@ fn handle_set_status(
 
 fn handle_log(
     app: &AppHandle,
+    event_bus: Option<&Arc<EventBus>>,
     _base_path: &PathBuf,
     _project_id: &str,
     request: &IpcRequest,
@@ -320,13 +348,21 @@ fn handle_log(
         None => return IpcResponse::error("Missing 'message' in payload"),
     };
 
+    let timestamp = chrono::Utc::now().to_rfc3339();
     let data = serde_json::json!({
         "card_id": request.card_id,
         "message": message,
-        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "timestamp": timestamp,
     });
 
     let _ = app.emit("agent-log", &data);
+    if let Some(bus) = event_bus {
+        bus.emit_maestro(MaestroEvent::AgentLog(AgentLogEvent {
+            card_id: request.card_id.clone(),
+            message: message.to_string(),
+            timestamp,
+        }));
+    }
 
     IpcResponse::success(data)
 }

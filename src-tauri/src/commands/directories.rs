@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
 use crate::commands::projects::open_project_db;
+use crate::executor::{EventBus, MaestroEvent};
 use crate::fs::git::is_git_repo;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -98,11 +101,16 @@ pub fn add_linked_directory_inner(
 #[tauri::command]
 pub fn add_linked_directory(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     path: String,
     label: String,
 ) -> Result<LinkedDirectory, String> {
-    add_linked_directory_inner(&config, &project_id, &path, &label)
+    let result = add_linked_directory_inner(&config, &project_id, &path, &label)?;
+    event_bus.emit_maestro(MaestroEvent::DirectoriesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn remove_linked_directory_inner(
@@ -132,10 +140,15 @@ pub fn remove_linked_directory_inner(
 #[tauri::command]
 pub fn remove_linked_directory(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
-    remove_linked_directory_inner(&config, &project_id, &id)
+    remove_linked_directory_inner(&config, &project_id, &id)?;
+    event_bus.emit_maestro(MaestroEvent::DirectoriesChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(())
 }
 
 pub fn list_linked_directories_inner(

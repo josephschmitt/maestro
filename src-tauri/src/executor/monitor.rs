@@ -8,7 +8,7 @@ use tokio::time::{interval, Duration};
 use crate::commands::projects::open_project_db;
 
 use super::reattach::is_process_alive;
-use super::AgentRegistry;
+use super::{AgentRegistry, EventBus, MaestroEvent};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentCrashedEvent {
@@ -18,6 +18,7 @@ pub struct AgentCrashedEvent {
 
 pub fn start_pid_monitor(
     app: AppHandle,
+    event_bus: Option<Arc<EventBus>>,
     registry: Arc<AgentRegistry>,
     base_path: PathBuf,
 ) {
@@ -25,13 +26,14 @@ pub fn start_pid_monitor(
         let mut tick = interval(Duration::from_secs(5));
         loop {
             tick.tick().await;
-            check_running_pids(&app, &registry, &base_path);
+            check_running_pids(&app, event_bus.as_ref(), &registry, &base_path);
         }
     });
 }
 
 fn check_running_pids(
     app: &AppHandle,
+    event_bus: Option<&Arc<EventBus>>,
     registry: &AgentRegistry,
     base_path: &PathBuf,
 ) {
@@ -60,12 +62,13 @@ fn check_running_pids(
             None => continue,
         };
 
-        check_project_pids(app, registry, base_path, &project_id);
+        check_project_pids(app, event_bus, registry, base_path, &project_id);
     }
 }
 
 fn check_project_pids(
     app: &AppHandle,
+    event_bus: Option<&Arc<EventBus>>,
     registry: &AgentRegistry,
     base_path: &PathBuf,
     project_id: &str,
@@ -116,6 +119,12 @@ fn check_project_pids(
                 workspace_id: workspace_id.clone(),
                 project_id: project_id.to_string(),
             };
+            if let Some(bus) = event_bus {
+                bus.emit_maestro(MaestroEvent::AgentCrashed(event.clone()));
+                bus.emit_maestro(MaestroEvent::WorkspacesChanged {
+                    project_id: project_id.to_string(),
+                });
+            }
             let _ = app.emit("agent-crashed", &event);
         }
     }

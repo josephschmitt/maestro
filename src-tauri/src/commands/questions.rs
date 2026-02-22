@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
 use crate::commands::projects::open_project_db;
+use crate::executor::{EventBus, MaestroEvent};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OpenQuestion {
@@ -82,12 +85,17 @@ pub fn create_question_inner(
 #[tauri::command]
 pub fn create_question(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     card_id: String,
     question: String,
     source: String,
 ) -> Result<OpenQuestion, String> {
-    create_question_inner(&config, &project_id, &card_id, &question, &source)
+    let result = create_question_inner(&config, &project_id, &card_id, &question, &source)?;
+    event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn list_questions_inner(
@@ -163,12 +171,17 @@ pub fn resolve_question_inner(
 #[tauri::command]
 pub fn resolve_question(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
     resolution: Option<String>,
     resolved_by: String,
 ) -> Result<OpenQuestion, String> {
-    resolve_question_inner(&config, &project_id, &id, resolution, &resolved_by)
+    let result = resolve_question_inner(&config, &project_id, &id, resolution, &resolved_by)?;
+    event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn unresolve_question_inner(
@@ -203,10 +216,15 @@ pub fn unresolve_question_inner(
 #[tauri::command]
 pub fn unresolve_question(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
 ) -> Result<OpenQuestion, String> {
-    unresolve_question_inner(&config, &project_id, &id)
+    let result = unresolve_question_inner(&config, &project_id, &id)?;
+    event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(result)
 }
 
 pub fn delete_question_inner(
@@ -236,10 +254,15 @@ pub fn delete_question_inner(
 #[tauri::command]
 pub fn delete_question(
     config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
-    delete_question_inner(&config, &project_id, &id)
+    delete_question_inner(&config, &project_id, &id)?;
+    event_bus.emit_maestro(MaestroEvent::QuestionsChanged {
+        project_id: project_id.clone(),
+    });
+    Ok(())
 }
 
 pub fn count_unresolved_questions_inner(

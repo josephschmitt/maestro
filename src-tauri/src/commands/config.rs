@@ -1,11 +1,12 @@
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::config::global::{default_config_path, GlobalConfig};
 use crate::config::resolution::resolve_agent_config;
-
-use std::path::PathBuf;
-use std::sync::Mutex;
+use crate::executor::{EventBus, MaestroEvent};
 
 pub struct ConfigState {
     pub(crate) config: Mutex<GlobalConfig>,
@@ -105,8 +106,14 @@ pub fn set_last_project_inner(config: &ConfigState, project_id: &str) -> Result<
 }
 
 #[tauri::command]
-pub fn set_last_project(config: State<ConfigState>, project_id: String) -> Result<(), String> {
-    set_last_project_inner(&config, &project_id)
+pub fn set_last_project(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+    project_id: String,
+) -> Result<(), String> {
+    set_last_project_inner(&config, &project_id)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(())
 }
 
 pub fn resolve_config_inner(
