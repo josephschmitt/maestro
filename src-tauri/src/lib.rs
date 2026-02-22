@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod db;
+pub mod events;
 pub mod executor;
 mod fs;
 pub mod ipc;
@@ -8,6 +9,7 @@ pub mod ipc;
 use std::sync::Arc;
 
 use commands::config::ConfigState;
+use events::EventBus;
 use executor::monitor::start_pid_monitor;
 use executor::reattach::startup_scan;
 use executor::AgentRegistry;
@@ -52,6 +54,7 @@ pub fn run() {
             app.manage(config_state);
             app.manage(registry);
             app.manage(Arc::new(IpcServer::new()));
+            app.manage(Arc::new(EventBus::new()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
