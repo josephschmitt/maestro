@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -33,7 +35,7 @@ const DIR_SELECT: &str = "\
 
 #[tauri::command]
 pub fn add_linked_directory(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     path: String,
     label: String,
@@ -98,7 +100,7 @@ pub fn add_linked_directory(
 
 #[tauri::command]
 pub fn remove_linked_directory(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
@@ -123,7 +125,7 @@ pub fn remove_linked_directory(
 
 #[tauri::command]
 pub fn list_linked_directories(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
 ) -> Result<Vec<LinkedDirectory>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;

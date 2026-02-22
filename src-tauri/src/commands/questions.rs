@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -35,7 +37,7 @@ const QUESTION_SELECT: &str = "\
 
 #[tauri::command]
 pub fn create_question(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
     question: String,
@@ -82,7 +84,7 @@ pub fn create_question(
 
 #[tauri::command]
 pub fn list_questions(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
 ) -> Result<Vec<OpenQuestion>, String> {
@@ -107,7 +109,7 @@ pub fn list_questions(
 
 #[tauri::command]
 pub fn resolve_question(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
     resolution: Option<String>,
@@ -145,7 +147,7 @@ pub fn resolve_question(
 
 #[tauri::command]
 pub fn unresolve_question(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<OpenQuestion, String> {
@@ -175,7 +177,7 @@ pub fn unresolve_question(
 
 #[tauri::command]
 pub fn delete_question(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
@@ -200,7 +202,7 @@ pub fn delete_question(
 
 #[tauri::command]
 pub fn count_unresolved_questions(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_ids: Vec<String>,
 ) -> Result<Vec<(String, i32)>, String> {

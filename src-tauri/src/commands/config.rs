@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tauri::State;
 
 use crate::config::global::{default_config_path, GlobalConfig};
@@ -71,7 +72,7 @@ pub struct ResolvedAgentConfigResponse {
 }
 
 #[tauri::command]
-pub fn get_global_config(config: State<ConfigState>) -> Result<GlobalConfigResponse, String> {
+pub fn get_global_config(config: State<Arc<ConfigState>>) -> Result<GlobalConfigResponse, String> {
     config.with_config(|c| {
         let agents = c
             .agents
@@ -94,7 +95,7 @@ pub fn get_global_config(config: State<ConfigState>) -> Result<GlobalConfigRespo
 }
 
 #[tauri::command]
-pub fn set_last_project(config: State<ConfigState>, project_id: String) -> Result<(), String> {
+pub fn set_last_project(config: State<Arc<ConfigState>>, project_id: String) -> Result<(), String> {
     config.update(|c| {
         c.defaults.last_project_id = project_id;
     })?;
@@ -103,7 +104,7 @@ pub fn set_last_project(config: State<ConfigState>, project_id: String) -> Resul
 
 #[tauri::command]
 pub fn resolve_config(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_agent_config: serde_json::Value,
     status_group: String,
 ) -> Result<ResolvedAgentConfigResponse, String> {

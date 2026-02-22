@@ -1,5 +1,7 @@
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::config::ConfigState;
@@ -48,7 +50,7 @@ fn resolve_artifact_path(base_path: &Path, project_id: &str, relative_path: &str
 
 #[tauri::command]
 pub fn create_artifact(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
     name: String,
@@ -126,7 +128,7 @@ pub fn create_artifact(
 
 #[tauri::command]
 pub fn read_artifact(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<String, String> {
@@ -149,7 +151,7 @@ pub fn read_artifact(
 
 #[tauri::command]
 pub fn update_artifact(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
     content: String,
@@ -187,7 +189,7 @@ pub fn update_artifact(
 
 #[tauri::command]
 pub fn delete_artifact(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
@@ -223,7 +225,7 @@ pub fn delete_artifact(
 
 #[tauri::command]
 pub fn list_artifacts(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
 ) -> Result<Vec<Artifact>, String> {

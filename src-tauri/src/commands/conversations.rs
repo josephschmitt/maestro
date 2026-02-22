@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -52,7 +54,7 @@ const MESSAGE_SELECT: &str = "\
 
 #[tauri::command]
 pub fn create_conversation(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
     agent_type: String,
@@ -94,7 +96,7 @@ pub fn create_conversation(
 
 #[tauri::command]
 pub fn list_conversations(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
 ) -> Result<Vec<Conversation>, String> {
@@ -119,7 +121,7 @@ pub fn list_conversations(
 
 #[tauri::command]
 pub fn create_message(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     conversation_id: String,
     role: String,
@@ -166,7 +168,7 @@ pub fn create_message(
 
 #[tauri::command]
 pub fn list_messages(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     conversation_id: String,
 ) -> Result<Vec<ConversationMessage>, String> {
@@ -191,7 +193,7 @@ pub fn list_messages(
 
 #[tauri::command]
 pub fn count_conversation_messages(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     conversation_ids: Vec<String>,
 ) -> Result<Vec<(String, i32)>, String> {

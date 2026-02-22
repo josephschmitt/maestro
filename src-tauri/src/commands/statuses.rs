@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -83,7 +85,7 @@ fn query_statuses(conn: &rusqlite::Connection, project_id: &str) -> Result<Vec<S
 
 #[tauri::command]
 pub fn list_statuses(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
 ) -> Result<Vec<Status>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
@@ -94,7 +96,7 @@ pub fn list_statuses(
 
 #[tauri::command]
 pub fn create_status(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     group: String,
     name: String,
@@ -152,7 +154,7 @@ pub fn create_status(
 
 #[tauri::command]
 pub fn update_status(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
     name: Option<String>,
@@ -218,7 +220,7 @@ pub fn update_status(
 
 #[tauri::command]
 pub fn delete_status(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
@@ -312,7 +314,7 @@ pub fn delete_status(
 
 #[tauri::command]
 pub fn reorder_statuses(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     group: String,
     status_ids: Vec<String>,

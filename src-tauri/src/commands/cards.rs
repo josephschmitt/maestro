@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -48,7 +50,7 @@ const CARD_SELECT: &str = "\
 
 #[tauri::command]
 pub fn create_card(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     title: String,
     description: Option<String>,
@@ -134,7 +136,7 @@ pub fn create_card(
 
 #[tauri::command]
 pub fn get_card(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<CardWithStatus, String> {
@@ -153,7 +155,7 @@ pub fn get_card(
 
 #[tauri::command]
 pub fn update_card(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
     title: Option<String>,
@@ -204,7 +206,7 @@ pub fn update_card(
 
 #[tauri::command]
 pub fn delete_card(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
 ) -> Result<(), String> {
@@ -236,7 +238,7 @@ pub fn delete_card(
 
 #[tauri::command]
 pub fn list_cards(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
 ) -> Result<Vec<CardWithStatus>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
@@ -260,7 +262,7 @@ pub fn list_cards(
 
 #[tauri::command]
 pub fn list_sub_cards(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     parent_id: String,
 ) -> Result<Vec<CardWithStatus>, String> {
@@ -287,7 +289,7 @@ pub fn list_sub_cards(
 
 #[tauri::command]
 pub fn move_card(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     id: String,
     target_status_id: String,
@@ -384,7 +386,7 @@ pub fn move_card(
 
 #[tauri::command]
 pub fn reorder_cards(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     status_id: String,
     card_ids: Vec<String>,

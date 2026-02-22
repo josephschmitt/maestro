@@ -8,7 +8,7 @@ use crate::ipc::server::IpcServer;
 #[tauri::command]
 pub async fn start_ipc_server(
     app: AppHandle,
-    config: State<'_, ConfigState>,
+    config: State<'_, Arc<ConfigState>>,
     ipc_server: State<'_, Arc<IpcServer>>,
     project_id: String,
 ) -> Result<String, String> {

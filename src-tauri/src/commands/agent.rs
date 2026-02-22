@@ -75,7 +75,7 @@ fn collect_artifact_contents(artifacts_dir: &std::path::Path) -> Vec<(String, St
 #[tauri::command]
 pub async fn launch_agent(
     app: AppHandle,
-    config: State<'_, ConfigState>,
+    config: State<'_, Arc<ConfigState>>,
     registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
     card_id: String,
@@ -274,7 +274,7 @@ pub async fn send_agent_input(
 
 #[tauri::command]
 pub async fn stop_agent(
-    config: State<'_, ConfigState>,
+    config: State<'_, Arc<ConfigState>>,
     registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
     workspace_id: String,
@@ -307,7 +307,7 @@ pub async fn stop_agent(
 
 #[tauri::command]
 pub fn list_workspaces(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
 ) -> Result<Vec<AgentWorkspace>, String> {
@@ -332,7 +332,7 @@ pub fn list_workspaces(
 
 #[tauri::command]
 pub fn get_workspace(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     workspace_id: String,
 ) -> Result<AgentWorkspace, String> {
@@ -352,7 +352,7 @@ pub fn get_workspace(
 #[tauri::command]
 pub async fn resume_agent(
     app: AppHandle,
-    config: State<'_, ConfigState>,
+    config: State<'_, Arc<ConfigState>>,
     registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
     workspace_id: String,
@@ -552,7 +552,7 @@ pub async fn resume_agent(
 
 #[tauri::command]
 pub fn list_running_workspaces(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
 ) -> Result<Vec<AgentWorkspace>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let projects_dir = base_path.join("projects");
@@ -608,7 +608,7 @@ pub fn list_running_workspaces(
 
 #[tauri::command]
 pub async fn stop_all_agents(
-    config: State<'_, ConfigState>,
+    config: State<'_, Arc<ConfigState>>,
     registry: State<'_, Arc<AgentRegistry>>,
 ) -> Result<(), String> {
     let pids = registry.all_pids();
