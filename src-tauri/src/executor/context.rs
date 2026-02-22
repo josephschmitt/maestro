@@ -164,6 +164,7 @@ mod tests {
                 binary: "claude".to_string(),
                 flags: vec!["--dangerously-skip-permissions".to_string()],
                 custom_command: None,
+                env_vars: None,
             },
         );
 

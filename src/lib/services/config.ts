@@ -1,8 +1,23 @@
-import type { GlobalConfigResponse, ResolvedAgentConfigResponse, HttpServerConfigResponse, HttpServerConfigUpdate } from '$lib/types/index.js';
+import type {
+	GlobalConfigResponse,
+	GlobalConfigUpdate,
+	ResolvedAgentConfigResponse,
+	HttpServerConfigResponse,
+	HttpServerConfigUpdate,
+	AgentProfileInput,
+	StatusGroupConfigInput,
+	StatusGroupDefaultsResponse
+} from '$lib/types/index.js';
 import { tauriInvoke } from './db.js';
 
 export async function getGlobalConfig(): Promise<GlobalConfigResponse> {
 	return tauriInvoke<GlobalConfigResponse>('get_global_config');
+}
+
+export async function updateGlobalConfig(
+	update: GlobalConfigUpdate
+): Promise<GlobalConfigResponse> {
+	return tauriInvoke<GlobalConfigResponse>('update_global_config', { update });
 }
 
 export async function setLastProject(projectId: string): Promise<void> {
@@ -16,6 +31,37 @@ export async function resolveConfig(
 	return tauriInvoke<ResolvedAgentConfigResponse>('resolve_config', {
 		projectAgentConfig,
 		statusGroup
+	});
+}
+
+export async function createAgentProfile(
+	profile: AgentProfileInput
+): Promise<GlobalConfigResponse> {
+	return tauriInvoke<GlobalConfigResponse>('create_agent_profile', { profile });
+}
+
+export async function updateAgentProfile(
+	name: string,
+	profile: AgentProfileInput
+): Promise<GlobalConfigResponse> {
+	return tauriInvoke<GlobalConfigResponse>('update_agent_profile', { name, profile });
+}
+
+export async function deleteAgentProfile(name: string): Promise<GlobalConfigResponse> {
+	return tauriInvoke<GlobalConfigResponse>('delete_agent_profile', { name });
+}
+
+export async function getStatusGroupDefaults(): Promise<StatusGroupDefaultsResponse> {
+	return tauriInvoke<StatusGroupDefaultsResponse>('get_status_group_defaults');
+}
+
+export async function updateStatusGroupDefaults(
+	statusGroup: string,
+	groupConfig: StatusGroupConfigInput
+): Promise<StatusGroupDefaultsResponse> {
+	return tauriInvoke<StatusGroupDefaultsResponse>('update_status_group_defaults', {
+		statusGroup,
+		groupConfig
 	});
 }
 

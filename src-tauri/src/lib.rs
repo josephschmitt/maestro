@@ -67,8 +67,14 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::config::get_global_config,
+            commands::config::update_global_config,
             commands::config::set_last_project,
             commands::config::resolve_config,
+            commands::config::create_agent_profile,
+            commands::config::update_agent_profile,
+            commands::config::delete_agent_profile,
+            commands::config::get_status_group_defaults,
+            commands::config::update_status_group_defaults,
             commands::config::get_http_server_config,
             commands::config::update_http_server_config,
             commands::config::regenerate_auth_token,

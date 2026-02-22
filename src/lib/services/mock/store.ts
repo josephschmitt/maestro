@@ -1,4 +1,4 @@
-import type { Card, Status, Project, GlobalConfigResponse, OpenQuestion, Artifact, LinkedDirectory, Conversation, ConversationMessage, AgentWorkspace } from '$lib/types/index.js';
+import type { Card, Status, Project, GlobalConfigResponse, OpenQuestion, Artifact, LinkedDirectory, Conversation, ConversationMessage, AgentWorkspace, StatusGroupConfigInput } from '$lib/types/index.js';
 import type { StatusGroup } from '$lib/types/status.js';
 
 export interface MockStore {
@@ -13,6 +13,7 @@ export interface MockStore {
 	conversationMessages: ConversationMessage[];
 	agentWorkspaces: AgentWorkspace[];
 	globalConfig: GlobalConfigResponse;
+	statusGroupDefaults: Record<string, StatusGroupConfigInput>;
 }
 
 let store: MockStore | null = null;
@@ -73,10 +74,19 @@ function createSeedStore(): MockStore {
 					name: 'claude-code',
 					binary: 'claude',
 					flags: ['--dangerously-skip-permissions'],
-					custom_command: null
+					custom_command: null,
+					env_vars: null
+				},
+				{
+					name: 'codex',
+					binary: 'codex',
+					flags: ['--full-auto'],
+					custom_command: null,
+					env_vars: null
 				}
 			]
-		}
+		},
+		statusGroupDefaults: {}
 	};
 }
 

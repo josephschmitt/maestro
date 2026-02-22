@@ -70,6 +70,8 @@ pub struct AgentProfile {
     #[serde(default)]
     pub flags: Vec<String>,
     pub custom_command: Option<String>,
+    #[serde(default)]
+    pub env_vars: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -120,6 +122,7 @@ impl Default for GlobalConfig {
                 binary: "claude".to_string(),
                 flags: vec!["--dangerously-skip-permissions".to_string()],
                 custom_command: None,
+                env_vars: None,
             },
         );
         agents.insert(
@@ -128,6 +131,7 @@ impl Default for GlobalConfig {
                 binary: "codex".to_string(),
                 flags: vec!["--full-auto".to_string()],
                 custom_command: None,
+                env_vars: None,
             },
         );
 

@@ -109,6 +109,30 @@ export interface AgentProfileConfig {
 	binary: string;
 	flags: string[];
 	custom_command: string | null;
+	env_vars: Record<string, string> | null;
+}
+
+export interface AgentProfileInput {
+	name: string;
+	binary: string;
+	flags: string[];
+	custom_command: string | null;
+	env_vars: Record<string, string> | null;
+}
+
+export interface GlobalConfigUpdate {
+	storage_base_path?: string;
+	default_agent?: string;
+}
+
+export interface StatusGroupConfigInput {
+	agent: string | null;
+	model: string | null;
+	instructions: string | null;
+}
+
+export interface StatusGroupDefaultsResponse {
+	status: Record<string, StatusGroupConfigInput>;
 }
 
 export interface GlobalConfigResponse {
