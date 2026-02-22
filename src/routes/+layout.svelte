@@ -198,13 +198,17 @@
 				aria-label="Resize sidebar"
 				aria-orientation="vertical"
 				tabindex="0"
-				class="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-primary/20 active:bg-primary/30 {isResizing ? 'bg-primary/30' : ''}"
+				class="group absolute -right-1 top-0 h-full w-3 cursor-col-resize"
 				onmousedown={handleResizeStart}
 				onkeydown={(e) => {
 					if (e.key === 'ArrowLeft') sidebarWidth.setWidth($sidebarWidth - 10);
 					if (e.key === 'ArrowRight') sidebarWidth.setWidth($sidebarWidth + 10);
 				}}
-			></div>
+			>
+				<div
+					class="absolute left-1 top-0 h-full w-1 group-hover:bg-primary/20 group-active:bg-primary/30 {isResizing ? 'bg-primary/30' : ''}"
+				></div>
+			</div>
 		</aside>
 	</FocusRegion>
 
