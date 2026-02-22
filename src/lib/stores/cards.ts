@@ -53,6 +53,14 @@ export const cardsByStatus = derived(cards, ($cards) => {
 	return map;
 });
 
+export const allCards = derived([cards, subCardsCache], ([$cards, $subCardsCache]) => {
+	const all = [...$cards];
+	for (const subs of $subCardsCache.values()) {
+		all.push(...subs);
+	}
+	return all;
+});
+
 export async function loadCards(): Promise<void> {
 	const project = get(currentProject);
 	if (!project) {

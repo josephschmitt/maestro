@@ -3,7 +3,7 @@
 	import CardDetailPanel from '$lib/components/card-detail/card-detail-panel.svelte';
 	import { currentProject } from '$lib/stores/project.js';
 	import { loadStatuses } from '$lib/stores/statuses.js';
-	import { loadCards, loadSubCardsForAll, cards } from '$lib/stores/cards.js';
+	import { loadCards, loadSubCardsForAll, allCards } from '$lib/stores/cards.js';
 	import { loadLinkedDirectories } from '$lib/stores/directories.js';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
@@ -65,7 +65,7 @@
 {#if selectedCardId}
 	<CardDetailPanel
 		cardId={selectedCardId}
-		cards={$cards}
+		cards={$allCards}
 		onclose={closeCard}
 		onnavigate={openCard}
 	/>
