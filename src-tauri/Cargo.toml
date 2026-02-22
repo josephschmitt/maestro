@@ -21,6 +21,7 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", features = ["process", "io-util", "sync", "time", "net", "rt", "macros"] }
+axum = "0.7"
 window-vibrancy = "0.5"
 libc = "0.2"
 toml = "0.8"
