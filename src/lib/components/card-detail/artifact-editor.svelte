@@ -24,11 +24,8 @@
 
 	async function loadContent(id: string) {
 		loading = true;
-		try {
-			content = await getArtifactContent(id);
-		} catch {
-			content = '';
-		}
+		const result = await getArtifactContent(id);
+		content = result ?? '';
 		loading = false;
 	}
 

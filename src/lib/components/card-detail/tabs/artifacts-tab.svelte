@@ -8,6 +8,7 @@
 	} from '$lib/stores/artifacts.js';
 	import ArtifactItem from '../artifact-item.svelte';
 	import ArtifactEditor from '../artifact-editor.svelte';
+	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
 	let {
@@ -19,6 +20,8 @@
 	let newArtifactName = $state('');
 	let editingArtifactId = $state<string | null>(null);
 	let confirmDeleteId = $state<string | null>(null);
+	let confirmDialogOpen = $state(false);
+	let deleteLoading = $state(false);
 
 	$effect(() => {
 		loadArtifacts(cardId);
@@ -34,7 +37,9 @@
 		if (!name) return;
 		const artifact = await addArtifact(cardId, name, '', 'user');
 		newArtifactName = '';
-		editingArtifactId = artifact.id;
+		if (artifact) {
+			editingArtifactId = artifact.id;
+		}
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -50,19 +55,24 @@
 
 	function handleDeleteClick(id: string) {
 		confirmDeleteId = id;
+		confirmDialogOpen = true;
 	}
 
 	async function handleConfirmDelete() {
 		if (!confirmDeleteId) return;
+		deleteLoading = true;
 		await removeArtifact(confirmDeleteId, cardId);
 		if (editingArtifactId === confirmDeleteId) {
 			editingArtifactId = null;
 		}
 		confirmDeleteId = null;
+		confirmDialogOpen = false;
+		deleteLoading = false;
 	}
 
 	function handleCancelDelete() {
 		confirmDeleteId = null;
+		confirmDialogOpen = false;
 	}
 </script>
 
@@ -112,34 +122,14 @@
 		{/if}
 	</div>
 
-	<!-- Delete confirmation dialog -->
-	{#if confirmDeleteId}
-		<div
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-			role="dialog"
-			aria-modal="true"
-			aria-label="Confirm delete"
-		>
-			<div class="mx-4 w-full max-w-sm rounded-lg border border-border bg-background p-6 shadow-lg">
-				<h3 class="text-sm font-medium text-foreground">Delete artifact?</h3>
-				<p class="mt-2 text-sm text-muted-foreground">
-					This will permanently remove the artifact and its file from disk. This action cannot be undone.
-				</p>
-				<div class="mt-4 flex justify-end gap-2">
-					<button
-						class="rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-						onclick={handleCancelDelete}
-					>
-						Cancel
-					</button>
-					<button
-						class="rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-						onclick={handleConfirmDelete}
-					>
-						Delete
-					</button>
-				</div>
-			</div>
-		</div>
-	{/if}
 {/if}
+
+<ConfirmDialog
+	bind:open={confirmDialogOpen}
+	title="Delete artifact?"
+	message="This will permanently remove the artifact and its file from disk. This action cannot be undone."
+	confirmLabel="Delete"
+	loading={deleteLoading}
+	onconfirm={handleConfirmDelete}
+	oncancel={handleCancelDelete}
+/>

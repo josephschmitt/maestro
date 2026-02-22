@@ -103,7 +103,7 @@ describe('cards store', () => {
 			expect(cardsService.createCard).toHaveBeenCalledWith('project-1', 'New Card', {
 				description: 'desc'
 			});
-			expect(result.id).toBe('new');
+			expect(result?.id).toBe('new');
 		});
 	});
 
@@ -116,7 +116,7 @@ describe('cards store', () => {
 			const result = await moveCard('a', 's2', 0);
 
 			expect(cardsService.moveCard).toHaveBeenCalledWith('project-1', 'a', 's2', 0);
-			expect(result.status_id).toBe('s2');
+			expect(result?.status_id).toBe('s2');
 		});
 	});
 

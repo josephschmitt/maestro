@@ -6,7 +6,7 @@
 	import SubCardsList from './sub-cards-list.svelte';
 	import SubCardBoard from '$lib/components/board/sub-card-board.svelte';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
-	import { getSubCards, updateCard, moveCard, addCard, loadCards } from '$lib/stores/cards.js';
+	import { getSubCards, updateCard, moveCard, addCard, loadCards, cardsLoading } from '$lib/stores/cards.js';
 	import { statuses as allStatuses } from '$lib/stores/statuses.js';
 	import { onMount } from 'svelte';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -16,6 +16,7 @@
 	import ConversationsTab from './tabs/conversations-tab.svelte';
 	import AgentTab from './tabs/agent-tab.svelte';
 	import ReviewTab from './tabs/review-tab.svelte';
+	import SkeletonDetail from '$lib/components/ui/skeleton-detail.svelte';
 
 	let {
 		cardId,
@@ -221,6 +222,8 @@
 				</div>
 			</div>
 		{/if}
+	{:else if $cardsLoading}
+		<SkeletonDetail />
 	{:else}
 		<div class="flex h-full items-center justify-center">
 			<p class="text-sm text-muted-foreground">Card not found.</p>

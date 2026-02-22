@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
+	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import {
 		linkedDirectories,
 		loadLinkedDirectories,
@@ -13,36 +14,38 @@
 	import GitBranchIcon from '@lucide/svelte/icons/git-branch';
 	import FolderIcon from '@lucide/svelte/icons/folder';
 
-	let error: string | null = $state(null);
 	let dialogOpen = $state(false);
+	let confirmDialogOpen = $state(false);
+	let deleteTargetId = $state<string | null>(null);
+	let deleteLoading = $state(false);
 
 	onMount(() => {
 		loadLinkedDirectories();
 	});
 
-	async function handleRemove(id: string) {
-		try {
-			error = null;
-			await removeLinkedDirectory(id);
-		} catch (e) {
-			error = e instanceof Error ? e.message : String(e);
-		}
+	function handleRemoveClick(id: string) {
+		deleteTargetId = id;
+		confirmDialogOpen = true;
+	}
+
+	async function handleConfirmRemove() {
+		if (!deleteTargetId) return;
+		deleteLoading = true;
+		await removeLinkedDirectory(deleteTargetId);
+		deleteTargetId = null;
+		confirmDialogOpen = false;
+		deleteLoading = false;
+	}
+
+	function handleCancelRemove() {
+		deleteTargetId = null;
+		confirmDialogOpen = false;
 	}
 </script>
 
 {#if !$currentProject}
 	<p class="text-sm text-muted-foreground">Select a project to manage linked directories.</p>
 {:else}
-	{#if error}
-		<div
-			class="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
-			role="alert"
-		>
-			{error}
-			<button class="ml-2 underline" onclick={() => (error = null)}>Dismiss</button>
-		</div>
-	{/if}
-
 	{#if $linkedDirectories.length === 0}
 		<p class="mb-3 text-sm text-muted-foreground">
 			No directories linked yet. Link a git repo or folder to get started.
@@ -78,7 +81,7 @@
 						size="sm"
 						class="h-7 w-7 shrink-0 p-0 text-destructive hover:text-destructive"
 						title="Remove linked directory"
-						onclick={() => handleRemove(dir.id)}
+						onclick={() => handleRemoveClick(dir.id)}
 					>
 						<TrashIcon class="size-3.5" />
 					</Button>
@@ -94,3 +97,13 @@
 
 	<LinkDirectoryDialog bind:open={dialogOpen} />
 {/if}
+
+<ConfirmDialog
+	bind:open={confirmDialogOpen}
+	title="Remove linked directory?"
+	message="This will unlink the directory from this project. The actual files on disk will not be affected."
+	confirmLabel="Remove"
+	loading={deleteLoading}
+	onconfirm={handleConfirmRemove}
+	oncancel={handleCancelRemove}
+/>
