@@ -16,6 +16,6 @@
 	}
 </script>
 
-<div data-focus-region={region} onfocusin={handleFocusIn}>
+<div data-focus-region={region} onfocusin={handleFocusIn} style="display: contents">
 	{@render children()}
 </div>
