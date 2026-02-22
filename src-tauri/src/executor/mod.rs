@@ -7,7 +7,35 @@ pub mod stream;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
+
+use lifecycle::AgentExitEvent;
+use stream::AgentOutputEvent;
+
+#[derive(Clone)]
+pub enum AgentEvent {
+    Output(AgentOutputEvent),
+    Exit(AgentExitEvent),
+}
+
+pub struct EventBus {
+    tx: broadcast::Sender<AgentEvent>,
+}
+
+impl EventBus {
+    pub fn new() -> Self {
+        let (tx, _) = broadcast::channel(1024);
+        Self { tx }
+    }
+
+    pub fn emit(&self, event: AgentEvent) {
+        let _ = self.tx.send(event);
+    }
+
+    pub fn subscribe(&self) -> broadcast::Receiver<AgentEvent> {
+        self.tx.subscribe()
+    }
+}
 
 pub struct AgentHandle {
     pub workspace_id: String,

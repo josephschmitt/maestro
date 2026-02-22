@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use tauri::{AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::ChildStderr;
@@ -6,6 +8,8 @@ use tokio::process::ChildStdout;
 use tokio::sync::mpsc;
 
 use serde::{Deserialize, Serialize};
+
+use super::{AgentEvent, EventBus};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentOutputEvent {
@@ -19,6 +23,15 @@ pub fn start_stdout_streaming(
     workspace_id: String,
     stdout: ChildStdout,
 ) {
+    start_stdout_streaming_inner(Some(app), None, workspace_id, stdout);
+}
+
+pub fn start_stdout_streaming_inner(
+    app: Option<AppHandle>,
+    event_bus: Option<Arc<EventBus>>,
+    workspace_id: String,
+    stdout: ChildStdout,
+) {
     tokio::spawn(async move {
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
@@ -28,13 +41,27 @@ pub fn start_stdout_streaming(
                 stream: "stdout".to_string(),
                 line,
             };
-            let _ = app.emit(&format!("agent-output-{}", workspace_id), &event);
+            if let Some(ref bus) = event_bus {
+                bus.emit(AgentEvent::Output(event.clone()));
+            }
+            if let Some(ref handle) = app {
+                let _ = handle.emit(&format!("agent-output-{}", workspace_id), &event);
+            }
         }
     });
 }
 
 pub fn start_stderr_streaming(
     app: AppHandle,
+    workspace_id: String,
+    stderr: ChildStderr,
+) {
+    start_stderr_streaming_inner(Some(app), None, workspace_id, stderr);
+}
+
+pub fn start_stderr_streaming_inner(
+    app: Option<AppHandle>,
+    event_bus: Option<Arc<EventBus>>,
     workspace_id: String,
     stderr: ChildStderr,
 ) {
@@ -47,7 +74,12 @@ pub fn start_stderr_streaming(
                 stream: "stderr".to_string(),
                 line,
             };
-            let _ = app.emit(&format!("agent-output-{}", workspace_id), &event);
+            if let Some(ref bus) = event_bus {
+                bus.emit(AgentEvent::Output(event.clone()));
+            }
+            if let Some(ref handle) = app {
+                let _ = handle.emit(&format!("agent-output-{}", workspace_id), &event);
+            }
         }
     });
 }
