@@ -3,6 +3,7 @@ mod config;
 mod db;
 pub mod executor;
 mod fs;
+pub mod http;
 pub mod ipc;
 
 use std::sync::Arc;
