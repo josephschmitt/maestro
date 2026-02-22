@@ -80,6 +80,11 @@ pub async fn start_http_server(state: AppState) -> Result<(), String> {
 
     eprintln!("[http] Server listening on http://{addr}");
 
+    if bind_address == "0.0.0.0" {
+        eprintln!("[http] ⚠️  WARNING: Server is accessible from other devices on your network.");
+        eprintln!("[http] Make sure you trust your network. Auth token is required for all requests.");
+    }
+
     axum::serve(listener, app)
         .await
         .map_err(|e| format!("HTTP server error: {e}"))

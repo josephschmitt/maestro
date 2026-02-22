@@ -37,6 +37,10 @@ const handlers: Record<string, Handler> = {
 	get_global_config: config.get_global_config,
 	set_last_project: config.set_last_project,
 	resolve_config: config.resolve_config,
+	get_http_server_config: config.get_http_server_config,
+	update_http_server_config: config.update_http_server_config,
+	regenerate_auth_token: config.regenerate_auth_token,
+	get_local_ip: config.get_local_ip,
 
 	create_question: questions.create_question,
 	list_questions: questions.list_questions,

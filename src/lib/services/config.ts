@@ -1,4 +1,4 @@
-import type { GlobalConfigResponse, ResolvedAgentConfigResponse } from '$lib/types/index.js';
+import type { GlobalConfigResponse, ResolvedAgentConfigResponse, HttpServerConfigResponse, HttpServerConfigUpdate } from '$lib/types/index.js';
 import { tauriInvoke } from './db.js';
 
 export async function getGlobalConfig(): Promise<GlobalConfigResponse> {
@@ -17,4 +17,20 @@ export async function resolveConfig(
 		projectAgentConfig,
 		statusGroup
 	});
+}
+
+export async function getHttpServerConfig(): Promise<HttpServerConfigResponse> {
+	return tauriInvoke<HttpServerConfigResponse>('get_http_server_config');
+}
+
+export async function updateHttpServerConfig(update: HttpServerConfigUpdate): Promise<HttpServerConfigResponse> {
+	return tauriInvoke<HttpServerConfigResponse>('update_http_server_config', { update });
+}
+
+export async function regenerateAuthToken(): Promise<string> {
+	return tauriInvoke<string>('regenerate_auth_token');
+}
+
+export async function getLocalIp(): Promise<string> {
+	return tauriInvoke<string>('get_local_ip');
 }

@@ -157,3 +157,18 @@ export interface FileDiff {
 export interface CreatePrResult {
 	url: string;
 }
+
+export interface HttpServerConfigResponse {
+	enabled: boolean;
+	port: number;
+	bind_address: string;
+	auth_token: string;
+	requires_auth: boolean;
+	server_url: string;
+}
+
+export interface HttpServerConfigUpdate {
+	enabled?: boolean;
+	port?: number;
+	bind_address?: string;
+}
