@@ -46,18 +46,17 @@ const CARD_SELECT: &str = "\
            s.name AS status_name, s.\"group\" AS status_group \
     FROM cards c JOIN statuses s ON c.status_id = s.id";
 
-#[tauri::command]
-pub fn create_card(
-    config: State<ConfigState>,
-    project_id: String,
-    title: String,
+pub fn create_card_inner(
+    config: &ConfigState,
+    project_id: &str,
+    title: &str,
     description: Option<String>,
     labels: Option<Vec<String>>,
     parent_id: Option<String>,
     status_id: Option<String>,
 ) -> Result<CardWithStatus, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let resolved_status_id = match status_id {
@@ -133,13 +132,25 @@ pub fn create_card(
 }
 
 #[tauri::command]
-pub fn get_card(
+pub fn create_card(
     config: State<ConfigState>,
     project_id: String,
-    id: String,
+    title: String,
+    description: Option<String>,
+    labels: Option<Vec<String>>,
+    parent_id: Option<String>,
+    status_id: Option<String>,
+) -> Result<CardWithStatus, String> {
+    create_card_inner(&config, &project_id, &title, description, labels, parent_id, status_id)
+}
+
+pub fn get_card_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<CardWithStatus, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         conn.query_row(
@@ -152,16 +163,24 @@ pub fn get_card(
 }
 
 #[tauri::command]
-pub fn update_card(
+pub fn get_card(
     config: State<ConfigState>,
     project_id: String,
     id: String,
+) -> Result<CardWithStatus, String> {
+    get_card_inner(&config, &project_id, &id)
+}
+
+pub fn update_card_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
     title: Option<String>,
     description: Option<String>,
     labels: Option<Vec<String>>,
 ) -> Result<CardWithStatus, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let existing = conn
@@ -203,13 +222,24 @@ pub fn update_card(
 }
 
 #[tauri::command]
-pub fn delete_card(
+pub fn update_card(
     config: State<ConfigState>,
     project_id: String,
     id: String,
+    title: Option<String>,
+    description: Option<String>,
+    labels: Option<Vec<String>>,
+) -> Result<CardWithStatus, String> {
+    update_card_inner(&config, &project_id, &id, title, description, labels)
+}
+
+pub fn delete_card_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<(), String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let exists: bool = conn
@@ -235,12 +265,20 @@ pub fn delete_card(
 }
 
 #[tauri::command]
-pub fn list_cards(
+pub fn delete_card(
     config: State<ConfigState>,
     project_id: String,
+    id: String,
+) -> Result<(), String> {
+    delete_card_inner(&config, &project_id, &id)
+}
+
+pub fn list_cards_inner(
+    config: &ConfigState,
+    project_id: &str,
 ) -> Result<Vec<CardWithStatus>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -259,13 +297,20 @@ pub fn list_cards(
 }
 
 #[tauri::command]
-pub fn list_sub_cards(
+pub fn list_cards(
     config: State<ConfigState>,
     project_id: String,
-    parent_id: String,
+) -> Result<Vec<CardWithStatus>, String> {
+    list_cards_inner(&config, &project_id)
+}
+
+pub fn list_sub_cards_inner(
+    config: &ConfigState,
+    project_id: &str,
+    parent_id: &str,
 ) -> Result<Vec<CardWithStatus>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -286,15 +331,23 @@ pub fn list_sub_cards(
 }
 
 #[tauri::command]
-pub fn move_card(
+pub fn list_sub_cards(
     config: State<ConfigState>,
     project_id: String,
-    id: String,
-    target_status_id: String,
+    parent_id: String,
+) -> Result<Vec<CardWithStatus>, String> {
+    list_sub_cards_inner(&config, &project_id, &parent_id)
+}
+
+pub fn move_card_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
+    target_status_id: &str,
     target_sort_order: i32,
 ) -> Result<CardWithStatus, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let (old_status_id, old_sort_order, parent_id): (String, i32, Option<String>) = conn
@@ -383,14 +436,24 @@ pub fn move_card(
 }
 
 #[tauri::command]
-pub fn reorder_cards(
+pub fn move_card(
     config: State<ConfigState>,
     project_id: String,
-    status_id: String,
-    card_ids: Vec<String>,
+    id: String,
+    target_status_id: String,
+    target_sort_order: i32,
+) -> Result<CardWithStatus, String> {
+    move_card_inner(&config, &project_id, &id, &target_status_id, target_sort_order)
+}
+
+pub fn reorder_cards_inner(
+    config: &ConfigState,
+    project_id: &str,
+    status_id: &str,
+    card_ids: &[String],
 ) -> Result<Vec<CardWithStatus>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         // Validate all cards belong to the status before starting transaction
@@ -450,6 +513,16 @@ pub fn reorder_cards(
             }
         }
     })
+}
+
+#[tauri::command]
+pub fn reorder_cards(
+    config: State<ConfigState>,
+    project_id: String,
+    status_id: String,
+    card_ids: Vec<String>,
+) -> Result<Vec<CardWithStatus>, String> {
+    reorder_cards_inner(&config, &project_id, &status_id, &card_ids)
 }
 
 #[cfg(test)]

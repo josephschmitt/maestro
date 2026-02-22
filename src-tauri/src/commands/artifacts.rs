@@ -46,17 +46,16 @@ fn resolve_artifact_path(base_path: &Path, project_id: &str, relative_path: &str
         .join(relative_path)
 }
 
-#[tauri::command]
-pub fn create_artifact(
-    config: State<ConfigState>,
-    project_id: String,
-    card_id: String,
-    name: String,
-    content: String,
-    created_by: String,
+pub fn create_artifact_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_id: &str,
+    name: &str,
+    content: &str,
+    created_by: &str,
 ) -> Result<Artifact, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let card_exists: bool = conn
@@ -77,7 +76,7 @@ pub fn create_artifact(
             ));
         }
 
-        let slug = name_to_slug(&name);
+        let slug = name_to_slug(name);
         if slug.is_empty() {
             return Err("Artifact name must contain at least one alphanumeric character".to_string());
         }
@@ -100,10 +99,10 @@ pub fn create_artifact(
         };
 
         let base = PathBuf::from(&base_path);
-        ensure_artifact_dir(&base, &project_id, &card_id)?;
+        ensure_artifact_dir(&base, project_id, card_id)?;
 
-        let full_path = resolve_artifact_path(&base_path, &project_id, &relative_path);
-        write_artifact_file(&full_path, &content)?;
+        let full_path = resolve_artifact_path(&base_path, project_id, &relative_path);
+        write_artifact_file(&full_path, content)?;
 
         let id = uuid::Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
@@ -125,13 +124,24 @@ pub fn create_artifact(
 }
 
 #[tauri::command]
-pub fn read_artifact(
+pub fn create_artifact(
     config: State<ConfigState>,
     project_id: String,
-    id: String,
+    card_id: String,
+    name: String,
+    content: String,
+    created_by: String,
+) -> Result<Artifact, String> {
+    create_artifact_inner(&config, &project_id, &card_id, &name, &content, &created_by)
+}
+
+pub fn read_artifact_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<String, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let relative_path: String = conn
@@ -142,20 +152,28 @@ pub fn read_artifact(
             )
             .map_err(|e| format!("Artifact {id} not found: {e}"))?;
 
-        let full_path = resolve_artifact_path(&base_path, &project_id, &relative_path);
+        let full_path = resolve_artifact_path(&base_path, project_id, &relative_path);
         read_artifact_file(&full_path)
     })
 }
 
 #[tauri::command]
-pub fn update_artifact(
+pub fn read_artifact(
     config: State<ConfigState>,
     project_id: String,
     id: String,
-    content: String,
+) -> Result<String, String> {
+    read_artifact_inner(&config, &project_id, &id)
+}
+
+pub fn update_artifact_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
+    content: &str,
 ) -> Result<Artifact, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let relative_path: String = conn
@@ -166,8 +184,8 @@ pub fn update_artifact(
             )
             .map_err(|e| format!("Artifact {id} not found: {e}"))?;
 
-        let full_path = resolve_artifact_path(&base_path, &project_id, &relative_path);
-        write_artifact_file(&full_path, &content)?;
+        let full_path = resolve_artifact_path(&base_path, project_id, &relative_path);
+        write_artifact_file(&full_path, content)?;
 
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
@@ -186,13 +204,22 @@ pub fn update_artifact(
 }
 
 #[tauri::command]
-pub fn delete_artifact(
+pub fn update_artifact(
     config: State<ConfigState>,
     project_id: String,
     id: String,
+    content: String,
+) -> Result<Artifact, String> {
+    update_artifact_inner(&config, &project_id, &id, &content)
+}
+
+pub fn delete_artifact_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<(), String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let relative_path: Result<String, _> = conn.query_row(
@@ -202,7 +229,7 @@ pub fn delete_artifact(
         );
 
         if let Ok(relative_path) = relative_path {
-            let full_path = resolve_artifact_path(&base_path, &project_id, &relative_path);
+            let full_path = resolve_artifact_path(&base_path, project_id, &relative_path);
             delete_artifact_file(&full_path)?;
         }
 
@@ -222,13 +249,21 @@ pub fn delete_artifact(
 }
 
 #[tauri::command]
-pub fn list_artifacts(
+pub fn delete_artifact(
     config: State<ConfigState>,
     project_id: String,
-    card_id: String,
+    id: String,
+) -> Result<(), String> {
+    delete_artifact_inner(&config, &project_id, &id)
+}
+
+pub fn list_artifacts_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_id: &str,
 ) -> Result<Vec<Artifact>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -244,6 +279,15 @@ pub fn list_artifacts(
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|e| format!("Failed to read artifact row: {e}"))
     })
+}
+
+#[tauri::command]
+pub fn list_artifacts(
+    config: State<ConfigState>,
+    project_id: String,
+    card_id: String,
+) -> Result<Vec<Artifact>, String> {
+    list_artifacts_inner(&config, &project_id, &card_id)
 }
 
 #[cfg(test)]

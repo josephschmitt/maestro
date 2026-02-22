@@ -50,15 +50,14 @@ const MESSAGE_SELECT: &str = "\
     SELECT id, conversation_id, role, content, timestamp \
     FROM conversation_messages";
 
-#[tauri::command]
-pub fn create_conversation(
-    config: State<ConfigState>,
-    project_id: String,
-    card_id: String,
-    agent_type: String,
+pub fn create_conversation_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_id: &str,
+    agent_type: &str,
 ) -> Result<Conversation, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let card_exists: bool = conn
@@ -93,13 +92,22 @@ pub fn create_conversation(
 }
 
 #[tauri::command]
-pub fn list_conversations(
+pub fn create_conversation(
     config: State<ConfigState>,
     project_id: String,
     card_id: String,
+    agent_type: String,
+) -> Result<Conversation, String> {
+    create_conversation_inner(&config, &project_id, &card_id, &agent_type)
+}
+
+pub fn list_conversations_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_id: &str,
 ) -> Result<Vec<Conversation>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -118,15 +126,23 @@ pub fn list_conversations(
 }
 
 #[tauri::command]
-pub fn create_message(
+pub fn list_conversations(
     config: State<ConfigState>,
     project_id: String,
-    conversation_id: String,
-    role: String,
-    content: String,
+    card_id: String,
+) -> Result<Vec<Conversation>, String> {
+    list_conversations_inner(&config, &project_id, &card_id)
+}
+
+pub fn create_message_inner(
+    config: &ConfigState,
+    project_id: &str,
+    conversation_id: &str,
+    role: &str,
+    content: &str,
 ) -> Result<ConversationMessage, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         if role != "user" && role != "agent" {
@@ -165,13 +181,23 @@ pub fn create_message(
 }
 
 #[tauri::command]
-pub fn list_messages(
+pub fn create_message(
     config: State<ConfigState>,
     project_id: String,
     conversation_id: String,
+    role: String,
+    content: String,
+) -> Result<ConversationMessage, String> {
+    create_message_inner(&config, &project_id, &conversation_id, &role, &content)
+}
+
+pub fn list_messages_inner(
+    config: &ConfigState,
+    project_id: &str,
+    conversation_id: &str,
 ) -> Result<Vec<ConversationMessage>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -190,17 +216,25 @@ pub fn list_messages(
 }
 
 #[tauri::command]
-pub fn count_conversation_messages(
+pub fn list_messages(
     config: State<ConfigState>,
     project_id: String,
-    conversation_ids: Vec<String>,
+    conversation_id: String,
+) -> Result<Vec<ConversationMessage>, String> {
+    list_messages_inner(&config, &project_id, &conversation_id)
+}
+
+pub fn count_conversation_messages_inner(
+    config: &ConfigState,
+    project_id: &str,
+    conversation_ids: &[String],
 ) -> Result<Vec<(String, i32)>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut results = Vec::new();
-        for conv_id in &conversation_ids {
+        for conv_id in conversation_ids {
             let count: i32 = conn
                 .query_row(
                     "SELECT COUNT(*) FROM conversation_messages WHERE conversation_id = ?1",
@@ -212,6 +246,15 @@ pub fn count_conversation_messages(
         }
         Ok(results)
     })
+}
+
+#[tauri::command]
+pub fn count_conversation_messages(
+    config: State<ConfigState>,
+    project_id: String,
+    conversation_ids: Vec<String>,
+) -> Result<Vec<(String, i32)>, String> {
+    count_conversation_messages_inner(&config, &project_id, &conversation_ids)
 }
 
 #[cfg(test)]

@@ -31,15 +31,14 @@ const DIR_SELECT: &str = "\
     SELECT id, project_id, path, label, is_repo, created_at \
     FROM linked_directories";
 
-#[tauri::command]
-pub fn add_linked_directory(
-    config: State<ConfigState>,
-    project_id: String,
-    path: String,
-    label: String,
+pub fn add_linked_directory_inner(
+    config: &ConfigState,
+    project_id: &str,
+    path: &str,
+    label: &str,
 ) -> Result<LinkedDirectory, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let project_exists: bool = conn
@@ -97,13 +96,22 @@ pub fn add_linked_directory(
 }
 
 #[tauri::command]
-pub fn remove_linked_directory(
+pub fn add_linked_directory(
     config: State<ConfigState>,
     project_id: String,
-    id: String,
+    path: String,
+    label: String,
+) -> Result<LinkedDirectory, String> {
+    add_linked_directory_inner(&config, &project_id, &path, &label)
+}
+
+pub fn remove_linked_directory_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<(), String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let rows_affected = conn
@@ -122,12 +130,20 @@ pub fn remove_linked_directory(
 }
 
 #[tauri::command]
-pub fn list_linked_directories(
+pub fn remove_linked_directory(
     config: State<ConfigState>,
     project_id: String,
+    id: String,
+) -> Result<(), String> {
+    remove_linked_directory_inner(&config, &project_id, &id)
+}
+
+pub fn list_linked_directories_inner(
+    config: &ConfigState,
+    project_id: &str,
 ) -> Result<Vec<LinkedDirectory>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -145,6 +161,14 @@ pub fn list_linked_directories(
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(|e| format!("Failed to read linked directory row: {e}"))
     })
+}
+
+#[tauri::command]
+pub fn list_linked_directories(
+    config: State<ConfigState>,
+    project_id: String,
+) -> Result<Vec<LinkedDirectory>, String> {
+    list_linked_directories_inner(&config, &project_id)
 }
 
 #[cfg(test)]

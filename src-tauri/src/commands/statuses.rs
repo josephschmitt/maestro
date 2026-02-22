@@ -81,30 +81,36 @@ fn query_statuses(conn: &rusqlite::Connection, project_id: &str) -> Result<Vec<S
         .map_err(|e| format!("Failed to read status row: {e}"))
 }
 
+pub fn list_statuses_inner(
+    config: &ConfigState,
+    project_id: &str,
+) -> Result<Vec<Status>, String> {
+    let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
+    let db = open_project_db(&base_path, project_id)?;
+
+    db.with_conn(|conn| query_statuses(conn, project_id))
+}
+
 #[tauri::command]
 pub fn list_statuses(
     config: State<ConfigState>,
     project_id: String,
 ) -> Result<Vec<Status>, String> {
-    let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
-
-    db.with_conn(|conn| query_statuses(conn, &project_id))
+    list_statuses_inner(&config, &project_id)
 }
 
-#[tauri::command]
-pub fn create_status(
-    config: State<ConfigState>,
-    project_id: String,
-    group: String,
-    name: String,
+pub fn create_status_inner(
+    config: &ConfigState,
+    project_id: &str,
+    group: &str,
+    name: &str,
     is_default: Option<bool>,
     status_prompts: Option<Vec<String>>,
 ) -> Result<Status, String> {
-    validate_group(&group)?;
+    validate_group(group)?;
 
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let max_order: i32 = conn
@@ -119,7 +125,7 @@ pub fn create_status(
         let now = chrono::Utc::now().to_rfc3339();
         let sort_order = max_order + 1;
         let set_default = is_default.unwrap_or(false);
-        let prompts_val = status_prompts.unwrap_or_else(|| default_status_prompts_for_group(&group));
+        let prompts_val = status_prompts.unwrap_or_else(|| default_status_prompts_for_group(group));
         let prompts_json = serialize_status_prompts(&prompts_val);
 
         if set_default {
@@ -139,9 +145,9 @@ pub fn create_status(
 
         Ok(Status {
             id,
-            project_id,
-            group,
-            name,
+            project_id: project_id.to_string(),
+            group: group.to_string(),
+            name: name.to_string(),
             sort_order,
             is_default: set_default,
             status_prompts: prompts_val,
@@ -151,16 +157,27 @@ pub fn create_status(
 }
 
 #[tauri::command]
-pub fn update_status(
+pub fn create_status(
     config: State<ConfigState>,
     project_id: String,
-    id: String,
+    group: String,
+    name: String,
+    is_default: Option<bool>,
+    status_prompts: Option<Vec<String>>,
+) -> Result<Status, String> {
+    create_status_inner(&config, &project_id, &group, &name, is_default, status_prompts)
+}
+
+pub fn update_status_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
     name: Option<String>,
     is_default: Option<bool>,
     status_prompts: Option<Vec<String>>,
 ) -> Result<Status, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let existing = conn
@@ -217,13 +234,24 @@ pub fn update_status(
 }
 
 #[tauri::command]
-pub fn delete_status(
+pub fn update_status(
     config: State<ConfigState>,
     project_id: String,
     id: String,
+    name: Option<String>,
+    is_default: Option<bool>,
+    status_prompts: Option<Vec<String>>,
+) -> Result<Status, String> {
+    update_status_inner(&config, &project_id, &id, name, is_default, status_prompts)
+}
+
+pub fn delete_status_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<(), String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let group: String = conn
@@ -311,16 +339,24 @@ pub fn delete_status(
 }
 
 #[tauri::command]
-pub fn reorder_statuses(
+pub fn delete_status(
     config: State<ConfigState>,
     project_id: String,
-    group: String,
-    status_ids: Vec<String>,
+    id: String,
+) -> Result<(), String> {
+    delete_status_inner(&config, &project_id, &id)
+}
+
+pub fn reorder_statuses_inner(
+    config: &ConfigState,
+    project_id: &str,
+    group: &str,
+    status_ids: &[String],
 ) -> Result<Vec<Status>, String> {
-    validate_group(&group)?;
+    validate_group(group)?;
 
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         // Verify all IDs belong to this group
@@ -344,8 +380,18 @@ pub fn reorder_statuses(
             .map_err(|e| format!("Failed to update sort order: {e}"))?;
         }
 
-        query_statuses(conn, &project_id)
+        query_statuses(conn, project_id)
     })
+}
+
+#[tauri::command]
+pub fn reorder_statuses(
+    config: State<ConfigState>,
+    project_id: String,
+    group: String,
+    status_ids: Vec<String>,
+) -> Result<Vec<Status>, String> {
+    reorder_statuses_inner(&config, &project_id, &group, &status_ids)
 }
 
 #[cfg(test)]
