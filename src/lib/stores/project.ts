@@ -2,6 +2,7 @@ import { writable, derived } from 'svelte/store';
 import type { Project, ProjectSummary } from '$lib/types/index.js';
 import { listProjects, getProject, createProject as createProjectService } from '$lib/services/projects.js';
 import { getGlobalConfig, setLastProject } from '$lib/services/config.js';
+import { listenEvent } from '$lib/services/events.js';
 
 export const projects = writable<ProjectSummary[]>([]);
 export const currentProject = writable<Project | null>(null);
@@ -51,3 +52,7 @@ export async function initializeProject(): Promise<void> {
 		isLoading.set(false);
 	}
 }
+
+listenEvent('projects-changed', () => {
+	loadProjects();
+});

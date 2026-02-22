@@ -5,6 +5,7 @@ import {
 	addLinkedDirectory as addLinkedDirectoryService,
 	removeLinkedDirectory as removeLinkedDirectoryService
 } from '$lib/services/directories.js';
+import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
 
 export const linkedDirectories = writable<LinkedDirectory[]>([]);
@@ -30,3 +31,10 @@ export async function removeLinkedDirectory(id: string): Promise<void> {
 	await removeLinkedDirectoryService(project.id, id);
 	await loadLinkedDirectories();
 }
+
+listenEvent<{ project_id: string }>('directories-changed', (payload) => {
+	const project = get(currentProject);
+	if (project?.id === payload.project_id) {
+		loadLinkedDirectories();
+	}
+});

@@ -15,6 +15,7 @@ class WebSocketEventManager {
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private connecting = false;
 	private connected = false;
+	private hasConnectedBefore = false;
 
 	async connect(): Promise<void> {
 		if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
@@ -26,6 +27,7 @@ class WebSocketEventManager {
 		}
 
 		this.connecting = true;
+		const isReconnect = this.hasConnectedBefore;
 
 		try {
 			const url = getWebSocketUrl('/ws/events');
@@ -38,6 +40,10 @@ class WebSocketEventManager {
 					this.connected = true;
 					this.connecting = false;
 					this.reconnectAttempts = 0;
+					this.hasConnectedBefore = true;
+					if (isReconnect) {
+						this.dispatchLocalEvent('__ws_reconnected__', {});
+					}
 					resolve();
 				};
 
@@ -148,6 +154,19 @@ class WebSocketEventManager {
 
 		this.connected = false;
 		this.connecting = false;
+	}
+
+	private dispatchLocalEvent(eventType: string, payload: unknown): void {
+		const callbacks = this.listeners.get(eventType);
+		if (callbacks) {
+			for (const callback of callbacks) {
+				try {
+					callback(payload);
+				} catch (e) {
+					console.error('Error in event callback:', e);
+				}
+			}
+		}
 	}
 }
 
