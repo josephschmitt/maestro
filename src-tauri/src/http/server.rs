@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::routing::get;
 use axum::Router;
 use tokio::net::TcpListener;
 
@@ -9,6 +10,7 @@ use crate::executor::{AgentRegistry, EventBus};
 use crate::ipc::server::IpcServer;
 
 use super::routes::api_routes;
+use super::websocket::{ws_agent_handler, ws_events_handler};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -40,6 +42,8 @@ impl AppState {
 pub async fn start_http_server(state: AppState, port: u16) -> Result<(), String> {
     let app = Router::new()
         .nest("/api", api_routes())
+        .route("/ws/events", get(ws_events_handler))
+        .route("/ws/agent/:workspace_id", get(ws_agent_handler))
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
