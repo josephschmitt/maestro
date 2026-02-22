@@ -1,6 +1,7 @@
 <script lang="ts">
 	import StatusManager from '$lib/components/status-manager.svelte';
 	import LinkedDirectories from '$lib/components/settings/linked-directories.svelte';
+	import AuthToken from '$lib/components/settings/auth-token.svelte';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { currentProject } from '$lib/stores/project.js';
 </script>
@@ -36,6 +37,16 @@
 					as working directories for agents.
 				</p>
 				<LinkedDirectories />
+			</section>
+
+			<Separator class="my-8" />
+
+			<section>
+				<h2 class="mb-4 text-base font-semibold">Authentication</h2>
+				<p class="mb-4 text-sm text-muted-foreground">
+					Manage authentication for HTTP server connections.
+				</p>
+				<AuthToken />
 			</section>
 		</div>
 	</div>

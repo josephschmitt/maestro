@@ -1,3 +1,4 @@
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -10,6 +11,51 @@ pub struct GlobalConfig {
     pub agents: HashMap<String, AgentProfile>,
     #[serde(default = "default_defaults")]
     pub defaults: DefaultsConfig,
+    #[serde(default)]
+    pub http_server: HttpServerConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HttpServerConfig {
+    #[serde(default = "default_bind_address")]
+    pub bind_address: String,
+    #[serde(default)]
+    pub auth_token: String,
+    #[serde(default = "default_http_port")]
+    pub port: u16,
+}
+
+fn default_bind_address() -> String {
+    "127.0.0.1".to_string()
+}
+
+fn default_http_port() -> u16 {
+    3456
+}
+
+impl Default for HttpServerConfig {
+    fn default() -> Self {
+        Self {
+            bind_address: default_bind_address(),
+            auth_token: String::new(),
+            port: default_http_port(),
+        }
+    }
+}
+
+impl HttpServerConfig {
+    pub fn requires_auth(&self) -> bool {
+        self.bind_address != "127.0.0.1" && self.bind_address != "localhost"
+    }
+
+    pub fn ensure_auth_token(&mut self) {
+        if self.requires_auth() && self.auth_token.is_empty() {
+            let mut rng = rand::thread_rng();
+            let bytes: [u8; 32] = rng.gen();
+            self.auth_token = hex::encode(bytes);
+            eprintln!("[http] Generated auth token for network mode: {}", self.auth_token);
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -89,6 +135,7 @@ impl Default for GlobalConfig {
             storage: default_storage(),
             agents,
             defaults: default_defaults(),
+            http_server: HttpServerConfig::default(),
         }
     }
 }
@@ -109,7 +156,8 @@ impl GlobalConfig {
 
     pub fn load(path: &Path) -> Result<Self, String> {
         if !path.exists() {
-            let config = Self::default();
+            let mut config = Self::default();
+            config.http_server.ensure_auth_token();
             config.save(path)?;
             return Ok(config);
         }
@@ -117,7 +165,16 @@ impl GlobalConfig {
         let content =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read config: {e}"))?;
 
-        toml::from_str(&content).map_err(|e| format!("Failed to parse config: {e}"))
+        let mut config: Self =
+            toml::from_str(&content).map_err(|e| format!("Failed to parse config: {e}"))?;
+
+        let needs_save = config.http_server.requires_auth() && config.http_server.auth_token.is_empty();
+        config.http_server.ensure_auth_token();
+        if needs_save {
+            config.save(path)?;
+        }
+
+        Ok(config)
     }
 
     pub fn save(&self, path: &Path) -> Result<(), String> {

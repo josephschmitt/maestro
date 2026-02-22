@@ -11,7 +11,7 @@ function getHttpBaseUrl(): string | null {
 	return null;
 }
 
-function getAuthToken(): string | null {
+export function getAuthToken(): string | null {
 	if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
 		return localStorage.getItem('maestro_auth_token');
 	}
@@ -44,7 +44,9 @@ export function getWebSocketUrl(path: string): string {
 		throw new Error('No HTTP base URL configured for WebSocket connection');
 	}
 	const wsUrl = httpUrl.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
-	return `${wsUrl}${path}`;
+	const token = getAuthToken();
+	const separator = path.includes('?') ? '&' : '?';
+	return token ? `${wsUrl}${path}${separator}token=${encodeURIComponent(token)}` : `${wsUrl}${path}`;
 }
 
 export async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
