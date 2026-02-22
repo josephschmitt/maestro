@@ -129,7 +129,7 @@
 <div class="flex h-screen w-screen overflow-hidden">
 	<FocusRegion region="sidebar">
 		<aside
-			class="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground"
+			class="flex w-56 shrink-0 flex-col border-r border-border bg-transparent text-sidebar-foreground"
 		>
 			<div
 				data-tauri-drag-region
@@ -159,7 +159,7 @@
 		</aside>
 	</FocusRegion>
 
-	<main class="flex flex-1 flex-col overflow-hidden">
+	<main class="flex flex-1 flex-col overflow-hidden bg-background">
 		<div data-tauri-drag-region class="h-8 w-full shrink-0"></div>
 		{@render children()}
 	</main>

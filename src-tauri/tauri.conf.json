@@ -9,11 +9,13 @@
 		"beforeBuildCommand": "npm run build"
 	},
 	"app": {
+		"macOSPrivateApi": true,
 		"windows": [
 			{
 				"title": "Maestro",
 				"titleBarStyle": "Overlay",
 				"hiddenTitle": true,
+				"transparent": true,
 				"width": 1200,
 				"height": 800,
 				"minWidth": 800,

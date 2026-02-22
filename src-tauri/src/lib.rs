@@ -13,6 +13,7 @@ use executor::reattach::startup_scan;
 use executor::AgentRegistry;
 use ipc::server::IpcServer;
 use tauri::Manager;
+use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,6 +53,12 @@ pub fn run() {
             app.manage(config_state);
             app.manage(registry);
             app.manage(Arc::new(IpcServer::new()));
+
+            #[cfg(target_os = "macos")]
+            for (_, window) in app.webview_windows() {
+                let _ = apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None);
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
