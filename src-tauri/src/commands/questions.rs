@@ -33,16 +33,15 @@ const QUESTION_SELECT: &str = "\
     SELECT id, card_id, question, resolution, source, resolved_by, created_at, resolved_at \
     FROM open_questions";
 
-#[tauri::command]
-pub fn create_question(
-    config: State<ConfigState>,
-    project_id: String,
-    card_id: String,
-    question: String,
-    source: String,
+pub fn create_question_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_id: &str,
+    question: &str,
+    source: &str,
 ) -> Result<OpenQuestion, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let card_exists: bool = conn
@@ -81,13 +80,23 @@ pub fn create_question(
 }
 
 #[tauri::command]
-pub fn list_questions(
+pub fn create_question(
     config: State<ConfigState>,
     project_id: String,
     card_id: String,
+    question: String,
+    source: String,
+) -> Result<OpenQuestion, String> {
+    create_question_inner(&config, &project_id, &card_id, &question, &source)
+}
+
+pub fn list_questions_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_id: &str,
 ) -> Result<Vec<OpenQuestion>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -106,15 +115,23 @@ pub fn list_questions(
 }
 
 #[tauri::command]
-pub fn resolve_question(
+pub fn list_questions(
     config: State<ConfigState>,
     project_id: String,
-    id: String,
+    card_id: String,
+) -> Result<Vec<OpenQuestion>, String> {
+    list_questions_inner(&config, &project_id, &card_id)
+}
+
+pub fn resolve_question_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
     resolution: Option<String>,
-    resolved_by: String,
+    resolved_by: &str,
 ) -> Result<OpenQuestion, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         if resolved_by != "agent" && resolved_by != "user" {
@@ -144,13 +161,23 @@ pub fn resolve_question(
 }
 
 #[tauri::command]
-pub fn unresolve_question(
+pub fn resolve_question(
     config: State<ConfigState>,
     project_id: String,
     id: String,
+    resolution: Option<String>,
+    resolved_by: String,
+) -> Result<OpenQuestion, String> {
+    resolve_question_inner(&config, &project_id, &id, resolution, &resolved_by)
+}
+
+pub fn unresolve_question_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<OpenQuestion, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let rows_affected = conn
@@ -174,13 +201,21 @@ pub fn unresolve_question(
 }
 
 #[tauri::command]
-pub fn delete_question(
+pub fn unresolve_question(
     config: State<ConfigState>,
     project_id: String,
     id: String,
+) -> Result<OpenQuestion, String> {
+    unresolve_question_inner(&config, &project_id, &id)
+}
+
+pub fn delete_question_inner(
+    config: &ConfigState,
+    project_id: &str,
+    id: &str,
 ) -> Result<(), String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let rows_affected = conn
@@ -199,17 +234,25 @@ pub fn delete_question(
 }
 
 #[tauri::command]
-pub fn count_unresolved_questions(
+pub fn delete_question(
     config: State<ConfigState>,
     project_id: String,
-    card_ids: Vec<String>,
+    id: String,
+) -> Result<(), String> {
+    delete_question_inner(&config, &project_id, &id)
+}
+
+pub fn count_unresolved_questions_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_ids: &[String],
 ) -> Result<Vec<(String, i32)>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut results = Vec::new();
-        for card_id in &card_ids {
+        for card_id in card_ids {
             let count: i32 = conn
                 .query_row(
                     "SELECT COUNT(*) FROM open_questions WHERE card_id = ?1 AND resolved_at IS NULL",
@@ -221,6 +264,15 @@ pub fn count_unresolved_questions(
         }
         Ok(results)
     })
+}
+
+#[tauri::command]
+pub fn count_unresolved_questions(
+    config: State<ConfigState>,
+    project_id: String,
+    card_ids: Vec<String>,
+) -> Result<Vec<(String, i32)>, String> {
+    count_unresolved_questions_inner(&config, &project_id, &card_ids)
 }
 
 #[cfg(test)]

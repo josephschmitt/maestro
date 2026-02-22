@@ -100,10 +100,9 @@ pub fn seed_default_statuses(
     Ok(())
 }
 
-#[tauri::command]
-pub fn create_project(
-    config: State<ConfigState>,
-    name: String,
+pub fn create_project_inner(
+    config: &ConfigState,
+    name: &str,
 ) -> Result<Project, String> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
@@ -149,7 +148,7 @@ pub fn create_project(
 
     Ok(Project {
         id,
-        name,
+        name: name.to_string(),
         agent_config,
         base_path: None,
         created_at: now.clone(),
@@ -158,12 +157,19 @@ pub fn create_project(
 }
 
 #[tauri::command]
-pub fn get_project(
+pub fn create_project(
     config: State<ConfigState>,
-    id: String,
+    name: String,
+) -> Result<Project, String> {
+    create_project_inner(&config, &name)
+}
+
+pub fn get_project_inner(
+    config: &ConfigState,
+    id: &str,
 ) -> Result<Project, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &id)?;
+    let db = open_project_db(&base_path, id)?;
 
     db.with_conn(|conn| {
         conn.query_row(
@@ -186,8 +192,15 @@ pub fn get_project(
 }
 
 #[tauri::command]
-pub fn list_projects(
+pub fn get_project(
     config: State<ConfigState>,
+    id: String,
+) -> Result<Project, String> {
+    get_project_inner(&config, &id)
+}
+
+pub fn list_projects_inner(
+    config: &ConfigState,
 ) -> Result<Vec<ProjectSummary>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let projects_dir = base_path.join("projects");
@@ -246,15 +259,21 @@ pub fn list_projects(
 }
 
 #[tauri::command]
-pub fn update_project(
+pub fn list_projects(
     config: State<ConfigState>,
-    id: String,
+) -> Result<Vec<ProjectSummary>, String> {
+    list_projects_inner(&config)
+}
+
+pub fn update_project_inner(
+    config: &ConfigState,
+    id: &str,
     name: Option<String>,
     agent_config: Option<serde_json::Value>,
     base_path: Option<String>,
 ) -> Result<Project, String> {
     let global_base = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&global_base, &id)?;
+    let db = open_project_db(&global_base, id)?;
 
     db.with_conn(|conn| {
         let existing = conn
@@ -286,7 +305,7 @@ pub fn update_project(
         .map_err(|e| format!("Failed to update project: {e}"))?;
 
         Ok(Project {
-            id,
+            id: id.to_string(),
             name: new_name,
             agent_config: new_config,
             base_path: new_base_path,
@@ -297,12 +316,22 @@ pub fn update_project(
 }
 
 #[tauri::command]
-pub fn delete_project(
+pub fn update_project(
     config: State<ConfigState>,
     id: String,
+    name: Option<String>,
+    agent_config: Option<serde_json::Value>,
+    base_path: Option<String>,
+) -> Result<Project, String> {
+    update_project_inner(&config, &id, name, agent_config, base_path)
+}
+
+pub fn delete_project_inner(
+    config: &ConfigState,
+    id: &str,
 ) -> Result<(), String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let dir = project_dir(&base_path, &id);
+    let dir = project_dir(&base_path, id);
 
     if !dir.exists() {
         return Err("Project not found".to_string());
@@ -319,6 +348,14 @@ pub fn delete_project(
     });
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn delete_project(
+    config: State<ConfigState>,
+    id: String,
+) -> Result<(), String> {
+    delete_project_inner(&config, &id)
 }
 
 #[cfg(test)]
