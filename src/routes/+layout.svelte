@@ -10,6 +10,8 @@
 	import AgentCrashedDialog from '$lib/components/dialogs/agent-crashed-dialog.svelte';
 	import AuthTokenDialog from '$lib/components/dialogs/auth-token-dialog.svelte';
 	import ConnectionStatus from '$lib/components/connection-status.svelte';
+	import ToastContainer from '$lib/components/ui/toast-container.svelte';
+	import ErrorBoundary from '$lib/components/ui/error-boundary.svelte';
 	import {
 		repoSelectorState,
 		branchNameState,
@@ -189,6 +191,7 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
+<ErrorBoundary>
 <div class="flex h-screen w-screen overflow-hidden">
 	<FocusRegion region="sidebar">
 		<aside
@@ -275,3 +278,5 @@
 />
 <AuthTokenDialog bind:open={authDialogOpen} onconfirm={handleAuthToken} />
 <ConnectionStatus />
+</ErrorBoundary>
+<ToastContainer />

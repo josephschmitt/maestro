@@ -27,8 +27,12 @@ import {
 } from '$lib/transitions/index.js';
 import type { TransitionPlan } from '$lib/transitions/index.js';
 import type { RunningAgentChoice, GateDataSources } from '$lib/transitions/index.js';
+import { toasts } from './toasts.js';
+import { getErrorMessage } from '$lib/utils/errors.js';
 
 export const cards = writable<CardWithStatus[]>([]);
+export const cardsLoading = writable(false);
+export const cardsError = writable<string | null>(null);
 
 export const subCardsCache = writable<Map<string, CardWithStatus[]>>(new Map());
 
@@ -68,8 +72,18 @@ export async function loadCards(): Promise<void> {
 		cards.set([]);
 		return;
 	}
-	const list = await listCardsService(project.id);
-	cards.set(list);
+	cardsLoading.set(true);
+	cardsError.set(null);
+	try {
+		const list = await listCardsService(project.id);
+		cards.set(list);
+	} catch (error) {
+		const message = getErrorMessage(error);
+		cardsError.set(message);
+		toasts.error('Failed to load cards', message);
+	} finally {
+		cardsLoading.set(false);
+	}
 }
 
 export async function addCard(
@@ -80,30 +94,60 @@ export async function addCard(
 		parentId?: string;
 		statusId?: string;
 	}
-): Promise<CardWithStatus> {
+): Promise<CardWithStatus | null> {
 	const project = get(currentProject);
-	if (!project) throw new Error('No project selected');
-	const card = await createCardService(project.id, title, options);
-	await loadCards();
-	return card;
+	if (!project) {
+		toasts.error('No project selected', 'Please select a project first.');
+		return null;
+	}
+	try {
+		const card = await createCardService(project.id, title, options);
+		await loadCards();
+		toasts.success('Card created', `"${title}" has been added.`);
+		return card;
+	} catch (error) {
+		const message = getErrorMessage(error);
+		toasts.error('Failed to create card', message);
+		return null;
+	}
 }
 
 export async function updateCard(
 	id: string,
 	updates: { title?: string; description?: string; labels?: string[] }
-): Promise<CardWithStatus> {
+): Promise<CardWithStatus | null> {
 	const project = get(currentProject);
-	if (!project) throw new Error('No project selected');
-	const card = await updateCardService(project.id, id, updates);
-	await loadCards();
-	return card;
+	if (!project) {
+		toasts.error('No project selected', 'Please select a project first.');
+		return null;
+	}
+	try {
+		const card = await updateCardService(project.id, id, updates);
+		await loadCards();
+		return card;
+	} catch (error) {
+		const message = getErrorMessage(error);
+		toasts.error('Failed to update card', message);
+		return null;
+	}
 }
 
-export async function removeCard(id: string): Promise<void> {
+export async function removeCard(id: string): Promise<boolean> {
 	const project = get(currentProject);
-	if (!project) throw new Error('No project selected');
-	await deleteCardService(project.id, id);
-	await loadCards();
+	if (!project) {
+		toasts.error('No project selected', 'Please select a project first.');
+		return false;
+	}
+	try {
+		await deleteCardService(project.id, id);
+		await loadCards();
+		toasts.success('Card deleted', 'The card has been removed.');
+		return true;
+	} catch (error) {
+		const message = getErrorMessage(error);
+		toasts.error('Failed to delete card', message);
+		return false;
+	}
 }
 
 function findCard(id: string): CardWithStatus | undefined {
@@ -159,9 +203,12 @@ export async function moveCard(
 	id: string,
 	targetStatusId: string,
 	targetSortOrder: number
-): Promise<CardWithStatus> {
+): Promise<CardWithStatus | null> {
 	const project = get(currentProject);
-	if (!project) throw new Error('No project selected');
+	if (!project) {
+		toasts.error('No project selected', 'Please select a project first.');
+		return null;
+	}
 
 	const movingCard = findCard(id);
 	const targetStatus = get(statuses).find((s) => s.id === targetStatusId);
@@ -169,65 +216,89 @@ export async function moveCard(
 	const runningAgentChoice = get(lastRunningAgentChoice);
 	lastRunningAgentChoice.set(undefined);
 
-	const card = await moveCardService(project.id, id, targetStatusId, targetSortOrder);
-	await loadCards();
+	try {
+		const card = await moveCardService(project.id, id, targetStatusId, targetSortOrder);
+		await loadCards();
 
-	if (movingCard && targetStatus) {
-		const ctx = await gatherTransitionContext(
-			movingCard.status_group,
-			targetStatus.group,
-			id,
-			getGateDataSources()
-		);
-		const plan = getTransitionPlan(ctx);
+		if (movingCard && targetStatus) {
+			const ctx = await gatherTransitionContext(
+				movingCard.status_group,
+				targetStatus.group,
+				id,
+				getGateDataSources()
+			);
+			const plan = getTransitionPlan(ctx);
 
-		const worktreeResult = await executeActions(plan.actions, {
-			cardId: id,
-			cardTitle: movingCard.title,
-			showLinkDirectoryPrompt: () => showLinkDirectoryPrompt.set(true),
-			runWorktreeFlow: async (cId, cTitle) => runWorktreeFlow(cId, cTitle),
-			archiveWorkspaces: async (cId) => {
-				await archiveCardWorkspacesService(project.id, cId);
-			},
-			stopAgent: async (cId) => {
-				const workspaces = await listWorkspacesService(project.id, cId);
-				const running = workspaces.find((w) => w.status === 'running');
-				if (running) {
-					await stopAgentService(project.id, running.id);
+			const worktreeResult = await executeActions(plan.actions, {
+				cardId: id,
+				cardTitle: movingCard.title,
+				showLinkDirectoryPrompt: () => showLinkDirectoryPrompt.set(true),
+				runWorktreeFlow: async (cId, cTitle) => runWorktreeFlow(cId, cTitle),
+				archiveWorkspaces: async (cId) => {
+					await archiveCardWorkspacesService(project.id, cId);
+				},
+				stopAgent: async (cId) => {
+					const workspaces = await listWorkspacesService(project.id, cId);
+					const running = workspaces.find((w) => w.status === 'running');
+					if (running) {
+						await stopAgentService(project.id, running.id);
+					}
 				}
+			}, runningAgentChoice);
+
+			if (worktreeResult) {
+				pendingWorktree.update((m) => {
+					m.set(id, worktreeResult);
+					return new Map(m);
+				});
 			}
-		}, runningAgentChoice);
-
-		if (worktreeResult) {
-			pendingWorktree.update((m) => {
-				m.set(id, worktreeResult);
-				return new Map(m);
-			});
 		}
-	}
 
-	return card;
+		return card;
+	} catch (error) {
+		const message = getErrorMessage(error);
+		toasts.error('Failed to move card', message);
+		return null;
+	}
 }
 
 export async function reorderCards(
 	statusId: string,
 	cardIds: string[]
-): Promise<void> {
+): Promise<boolean> {
 	const project = get(currentProject);
-	if (!project) throw new Error('No project selected');
-	await reorderCardsService(project.id, statusId, cardIds);
-	await loadCards();
+	if (!project) {
+		toasts.error('No project selected', 'Please select a project first.');
+		return false;
+	}
+	try {
+		await reorderCardsService(project.id, statusId, cardIds);
+		await loadCards();
+		return true;
+	} catch (error) {
+		const message = getErrorMessage(error);
+		toasts.error('Failed to reorder cards', message);
+		return false;
+	}
 }
 
 export async function getSubCards(parentId: string): Promise<CardWithStatus[]> {
 	const project = get(currentProject);
-	if (!project) throw new Error('No project selected');
-	const result = await listSubCardsService(project.id, parentId);
-	subCardsCache.update((m) => {
-		m.set(parentId, result);
-		return new Map(m);
-	});
-	return result;
+	if (!project) {
+		return [];
+	}
+	try {
+		const result = await listSubCardsService(project.id, parentId);
+		subCardsCache.update((m) => {
+			m.set(parentId, result);
+			return new Map(m);
+		});
+		return result;
+	} catch (error) {
+		const message = getErrorMessage(error);
+		toasts.error('Failed to load sub-cards', message);
+		return [];
+	}
 }
 
 export async function loadSubCardsForAll(): Promise<void> {
@@ -235,15 +306,20 @@ export async function loadSubCardsForAll(): Promise<void> {
 	if (!project) return;
 	const topCards = get(cards);
 	const cache = new Map<string, CardWithStatus[]>();
-	await Promise.all(
-		topCards.map(async (card) => {
-			const subs = await listSubCardsService(project.id, card.id);
-			if (subs.length > 0) {
-				cache.set(card.id, subs);
-			}
-		})
-	);
-	subCardsCache.set(cache);
+	try {
+		await Promise.all(
+			topCards.map(async (card) => {
+				const subs = await listSubCardsService(project.id, card.id);
+				if (subs.length > 0) {
+					cache.set(card.id, subs);
+				}
+			})
+		);
+		subCardsCache.set(cache);
+	} catch (error) {
+		const message = getErrorMessage(error);
+		toasts.error('Failed to load sub-cards', message);
+	}
 }
 
 export function getCardProgress(parentId: string): CardProgress {

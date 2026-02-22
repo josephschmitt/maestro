@@ -4,12 +4,13 @@
 	import {
 		cards,
 		cardsByStatus,
+		cardsLoading,
 		addCard,
 		getCardProgress,
 		getTransitionPlanForMove,
 		lastRunningAgentChoice
 	} from '$lib/stores/cards.js';
-	import { statuses as allStatuses } from '$lib/stores/statuses.js';
+	import { statuses as allStatuses, statusesLoading } from '$lib/stores/statuses.js';
 	import { statusesByGroup } from '$lib/stores/statuses.js';
 	import { unresolvedCountByCard, loadUnresolvedCounts } from '$lib/stores/questions.js';
 	import { listQuestions } from '$lib/services/questions.js';
@@ -22,6 +23,7 @@
 	import BackwardTransitionDialog from '$lib/components/dialogs/backward-transition-dialog.svelte';
 	import EmptyState from './empty-state.svelte';
 	import FocusRegion from '$lib/focus/region.svelte';
+	import SkeletonColumn from '$lib/components/ui/skeleton-column.svelte';
 
 	let {
 		onCardClick
@@ -31,6 +33,7 @@
 
 	let hasStatuses = $derived($allStatuses.length > 0);
 	let totalCards = $derived($cards.filter((c) => c.parent_id === null).length);
+	let isLoading = $derived($cardsLoading || $statusesLoading);
 
 	let gateDialogOpen = $state(false);
 	let gateQuestions = $state<OpenQuestion[]>([]);
@@ -138,12 +141,18 @@
 	}
 </script>
 
-{#if !hasStatuses}
+{#if isLoading && !hasStatuses}
+	<div class="flex flex-1 gap-3 overflow-x-auto p-4">
+		{#each Array(5) as _, i (i)}
+			<SkeletonColumn cardCount={i === 2 ? 4 : i === 3 ? 2 : 3} />
+		{/each}
+	</div>
+{:else if !hasStatuses}
 	<EmptyState />
 {:else}
 	<FocusRegion region="board">
 		<div class="flex flex-1 flex-col overflow-hidden">
-			{#if totalCards === 0}
+			{#if totalCards === 0 && !isLoading}
 				<div class="flex items-center justify-center border-b border-border px-4 py-3">
 					<p class="text-sm text-muted-foreground">
 						No cards yet. Use the + button in any column to add your first card.
