@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -102,7 +104,7 @@ pub fn seed_default_statuses(
 
 #[tauri::command]
 pub fn create_project(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     name: String,
 ) -> Result<Project, String> {
     let id = uuid::Uuid::new_v4().to_string();
@@ -159,7 +161,7 @@ pub fn create_project(
 
 #[tauri::command]
 pub fn get_project(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     id: String,
 ) -> Result<Project, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
@@ -187,7 +189,7 @@ pub fn get_project(
 
 #[tauri::command]
 pub fn list_projects(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
 ) -> Result<Vec<ProjectSummary>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let projects_dir = base_path.join("projects");
@@ -247,7 +249,7 @@ pub fn list_projects(
 
 #[tauri::command]
 pub fn update_project(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     id: String,
     name: Option<String>,
     agent_config: Option<serde_json::Value>,
@@ -298,7 +300,7 @@ pub fn update_project(
 
 #[tauri::command]
 pub fn delete_project(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     id: String,
 ) -> Result<(), String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;

@@ -3,6 +3,41 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HttpServerConfig {
+    #[serde(default = "default_http_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_http_port")]
+    pub port: u16,
+    #[serde(default = "default_http_bind_address")]
+    pub bind_address: String,
+    #[serde(default)]
+    pub auth_token: Option<String>,
+}
+
+fn default_http_enabled() -> bool {
+    true
+}
+
+fn default_http_port() -> u16 {
+    3100
+}
+
+fn default_http_bind_address() -> String {
+    "127.0.0.1".to_string()
+}
+
+impl Default for HttpServerConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_http_enabled(),
+            port: default_http_port(),
+            bind_address: default_http_bind_address(),
+            auth_token: None,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GlobalConfig {
     #[serde(default = "default_storage")]
     pub storage: StorageConfig,
@@ -10,6 +45,8 @@ pub struct GlobalConfig {
     pub agents: HashMap<String, AgentProfile>,
     #[serde(default = "default_defaults")]
     pub defaults: DefaultsConfig,
+    #[serde(default)]
+    pub http_server: HttpServerConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -89,6 +126,7 @@ impl Default for GlobalConfig {
             storage: default_storage(),
             agents,
             defaults: default_defaults(),
+            http_server: HttpServerConfig::default(),
         }
     }
 }

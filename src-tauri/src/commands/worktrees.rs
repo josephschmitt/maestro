@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use tauri::State;
 
 use crate::commands::config::ConfigState;
@@ -11,7 +13,7 @@ pub fn generate_branch_name(card_id: String, title: String) -> String {
 
 #[tauri::command]
 pub async fn create_worktree(
-    config: State<'_, ConfigState>,
+    config: State<'_, Arc<ConfigState>>,
     project_id: String,
     card_id: String,
     repo_path: String,
@@ -32,7 +34,7 @@ pub async fn create_worktree(
 
 #[tauri::command]
 pub fn check_worktree_exists(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
     branch_slug: String,
@@ -49,7 +51,7 @@ pub fn check_worktree_exists(
 
 #[tauri::command]
 pub fn get_card_worktree(
-    config: State<ConfigState>,
+    config: State<Arc<ConfigState>>,
     project_id: String,
     card_id: String,
 ) -> Result<Option<WorktreeInfo>, String> {

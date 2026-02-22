@@ -4,6 +4,7 @@ mod db;
 pub mod events;
 pub mod executor;
 mod fs;
+pub mod http;
 pub mod ipc;
 
 use std::sync::Arc;
@@ -51,10 +52,39 @@ pub fn run() {
                 base_path,
             );
 
+            let config_state = Arc::new(config_state);
+            let ipc = Arc::new(IpcServer::new());
+            let event_bus = Arc::new(EventBus::new());
+
+            let http_config = config_state
+                .with_config(|c| Ok(c.http_server.clone()))
+                .expect("failed to read HTTP server config");
+
+            if http_config.enabled {
+                let bind_addr = format!("{}:{}", http_config.bind_address, http_config.port);
+                let server_url = format!("{}:{}", http_config.bind_address, http_config.port);
+
+                let app_state = http::server::AppState {
+                    config: Arc::clone(&config_state),
+                    registry: Arc::clone(&registry),
+                    ipc: Arc::clone(&ipc),
+                    event_bus: Arc::clone(&event_bus),
+                    server_url: server_url.clone(),
+                };
+
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = http::server::start_http_server(app_state, bind_addr).await {
+                        eprintln!("[http] Failed to start HTTP server: {e}");
+                    }
+                });
+
+                eprintln!("[http] HTTP server enabled on http://{server_url}");
+            }
+
             app.manage(config_state);
             app.manage(registry);
-            app.manage(Arc::new(IpcServer::new()));
-            app.manage(Arc::new(EventBus::new()));
+            app.manage(ipc);
+            app.manage(event_bus);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
