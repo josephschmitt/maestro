@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(cargo test:*)",
+      "Bash(devbox run:*)",
+      "Bash(npm test:*)",
+      "Bash(vitest:*)",
+      "Bash(npx vitest:*)",
+      "WebFetch(domain:crates.io)"
+    ]
+  }
+}

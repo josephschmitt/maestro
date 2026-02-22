@@ -35,3 +35,6 @@ vite.config.ts.timestamp-*
 
 # Devbox
 .devbox/
+
+# Claude Code
+.claude/worktrees/
