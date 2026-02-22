@@ -14,7 +14,11 @@
 		resolveRepoSelection,
 		resolveBranchName
 	} from '$lib/stores/worktree-flow.js';
-	import { initializeProject, hasProject } from '$lib/stores/project.js';
+	import { initializeProject, hasProject, loadProjects } from '$lib/stores/project.js';
+	import { loadStatuses } from '$lib/stores/statuses.js';
+	import { loadCards } from '$lib/stores/cards.js';
+	import { loadLinkedDirectories } from '$lib/stores/directories.js';
+	import { listenEvent } from '$lib/services/events.js';
 	import { listRunningWorkspaces, stopAllAgents } from '$lib/services/agent.js';
 	import { resumeAgent } from '$lib/stores/agent.js';
 	import { onMount, onDestroy } from 'svelte';
@@ -69,6 +73,7 @@
 	onMount(() => {
 		initializeProject();
 		setupTauriListeners();
+		setupReconnectHandler();
 
 		document.addEventListener('mousemove', handleResizeMove);
 		document.addEventListener('mouseup', handleResizeEnd);
@@ -78,6 +83,16 @@
 			document.removeEventListener('mouseup', handleResizeEnd);
 		};
 	});
+
+	async function setupReconnectHandler() {
+		const unlisten = await listenEvent('__ws_reconnected__', () => {
+			loadProjects();
+			loadStatuses();
+			loadCards();
+			loadLinkedDirectories();
+		});
+		cleanupFns.push(unlisten);
+	}
 
 	onDestroy(() => {
 		for (const fn of cleanupFns) fn();

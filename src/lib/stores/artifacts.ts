@@ -7,11 +7,15 @@ import {
 	updateArtifact as updateArtifactService,
 	deleteArtifact as deleteArtifactService
 } from '$lib/services/artifacts.js';
+import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
 
 export const artifacts = writable<Artifact[]>([]);
 
+let currentCardId: string | null = null;
+
 export async function loadArtifacts(cardId: string): Promise<void> {
+	currentCardId = cardId;
 	const project = get(currentProject);
 	if (!project) return;
 	const list = await listArtifactsService(project.id, cardId);
@@ -55,3 +59,10 @@ export async function removeArtifact(id: string, cardId: string): Promise<void> 
 	await deleteArtifactService(project.id, id);
 	await loadArtifacts(cardId);
 }
+
+listenEvent<{ project_id: string }>('artifacts-changed', (payload) => {
+	const project = get(currentProject);
+	if (project?.id === payload.project_id && currentCardId) {
+		loadArtifacts(currentCardId);
+	}
+});

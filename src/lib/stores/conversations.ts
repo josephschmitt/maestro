@@ -7,12 +7,15 @@ import {
 	createMessage as createMessageService,
 	countConversationMessages as countMessagesService
 } from '$lib/services/conversations.js';
+import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
 
 export const conversations = writable<Conversation[]>([]);
 export const messages = writable<ConversationMessage[]>([]);
 export const activeConversationId = writable<string | null>(null);
 export const messageCountByConversation = writable<Map<string, number>>(new Map());
+
+let currentCardId: string | null = null;
 
 export const activeConversation = derived(
 	[conversations, activeConversationId],
@@ -21,6 +24,7 @@ export const activeConversation = derived(
 );
 
 export async function loadConversations(cardId: string): Promise<void> {
+	currentCardId = cardId;
 	const project = get(currentProject);
 	if (!project) return;
 	const list = await listConversationsService(project.id, cardId);
@@ -74,3 +78,10 @@ export async function loadMessageCounts(conversationIds: string[]): Promise<void
 	}
 	messageCountByConversation.set(map);
 }
+
+listenEvent<{ project_id: string }>('conversations-changed', (payload) => {
+	const project = get(currentProject);
+	if (project?.id === payload.project_id && currentCardId) {
+		loadConversations(currentCardId);
+	}
+});

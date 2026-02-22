@@ -14,6 +14,7 @@ import {
 	stopAgent as stopAgentService,
 	archiveCardWorkspaces as archiveCardWorkspacesService
 } from '$lib/services/agent.js';
+import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
 import { statuses } from './statuses.js';
 import { linkedDirectories } from './directories.js';
@@ -251,3 +252,10 @@ export function getCardProgress(parentId: string): CardProgress {
 	const completed = subCards.filter((c) => c.status_group === 'Completed').length;
 	return { completed, total: subCards.length };
 }
+
+listenEvent<{ project_id: string }>('cards-changed', (payload) => {
+	const project = get(currentProject);
+	if (project?.id === payload.project_id) {
+		loadCards();
+	}
+});

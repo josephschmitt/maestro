@@ -8,6 +8,7 @@ import {
 	deleteStatus as deleteStatusService,
 	reorderStatuses as reorderStatusesService
 } from '$lib/services/statuses.js';
+import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
 
 export const statuses = writable<Status[]>([]);
@@ -65,3 +66,10 @@ export async function reorderStatuses(group: StatusGroup, statusIds: string[]): 
 	await reorderStatusesService(project.id, group, statusIds);
 	await loadStatuses();
 }
+
+listenEvent<{ project_id: string }>('statuses-changed', (payload) => {
+	const project = get(currentProject);
+	if (project?.id === payload.project_id) {
+		loadStatuses();
+	}
+});

@@ -8,6 +8,7 @@ import {
 	sendAgentInput as sendAgentInputService
 } from '$lib/services/agent.js';
 import { connectAgentStream, type AgentStreamConnection } from '$lib/services/agent-ws.js';
+import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
 
 export interface AgentOutputLine {
@@ -20,6 +21,8 @@ export const activeWorkspaceId = writable<string | null>(null);
 export const agentOutput = writable<Map<string, AgentOutputLine[]>>(new Map());
 
 const agentConnections = new Map<string, AgentStreamConnection>();
+
+let currentCardId: string | null = null;
 
 export const activeWorkspace = derived(
 	[workspaces, activeWorkspaceId],
@@ -36,6 +39,7 @@ export const activeOutput = derived(
 );
 
 export async function loadWorkspaces(cardId: string): Promise<void> {
+	currentCardId = cardId;
 	const project = get(currentProject);
 	if (!project) return;
 	const list = await listWorkspacesService(project.id, cardId);
@@ -149,3 +153,10 @@ export function cleanupAllListeners(): void {
 	}
 	agentConnections.clear();
 }
+
+listenEvent<{ project_id: string }>('workspaces-changed', (payload) => {
+	const project = get(currentProject);
+	if (project?.id === payload.project_id && currentCardId) {
+		loadWorkspaces(currentCardId);
+	}
+});

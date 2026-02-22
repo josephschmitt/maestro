@@ -8,6 +8,7 @@ import {
 	deleteQuestion as deleteQuestionService,
 	countUnresolvedQuestions as countUnresolvedService
 } from '$lib/services/questions.js';
+import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
 
 export const questions = writable<OpenQuestion[]>([]);
@@ -22,7 +23,10 @@ export const resolvedQuestions = derived(questions, ($questions) =>
 
 export const unresolvedCountByCard = writable<Map<string, number>>(new Map());
 
+let currentCardId: string | null = null;
+
 export async function loadQuestions(cardId: string): Promise<void> {
+	currentCardId = cardId;
 	const project = get(currentProject);
 	if (!project) return;
 	const list = await listQuestionsService(project.id, cardId);
@@ -80,3 +84,10 @@ export async function loadUnresolvedCounts(cardIds: string[]): Promise<void> {
 	}
 	unresolvedCountByCard.set(map);
 }
+
+listenEvent<{ project_id: string }>('questions-changed', (payload) => {
+	const project = get(currentProject);
+	if (project?.id === payload.project_id && currentCardId) {
+		loadQuestions(currentCardId);
+	}
+});
