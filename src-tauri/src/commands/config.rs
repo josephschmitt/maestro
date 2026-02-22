@@ -140,6 +140,113 @@ pub fn resolve_config(
     resolve_config_inner(&config, &project_agent_config, &status_group)
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HttpServerConfigResponse {
+    pub enabled: bool,
+    pub port: u16,
+    pub bind_address: String,
+    pub auth_token: String,
+    pub requires_auth: bool,
+    pub server_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HttpServerConfigUpdate {
+    pub enabled: Option<bool>,
+    pub port: Option<u16>,
+    pub bind_address: Option<String>,
+}
+
+pub fn get_http_server_config_inner(config: &ConfigState) -> Result<HttpServerConfigResponse, String> {
+    config.with_config(|c| {
+        let http = &c.http_server;
+        let local_ip = get_local_ip_address();
+        let display_address = if http.bind_address == "0.0.0.0" {
+            local_ip.as_deref().unwrap_or("localhost")
+        } else {
+            &http.bind_address
+        };
+        let server_url = format!("http://{}:{}", display_address, http.port);
+
+        Ok(HttpServerConfigResponse {
+            enabled: true,
+            port: http.port,
+            bind_address: http.bind_address.clone(),
+            auth_token: http.auth_token.clone(),
+            requires_auth: http.requires_auth(),
+            server_url,
+        })
+    })
+}
+
+#[tauri::command]
+pub fn get_http_server_config(config: State<ConfigState>) -> Result<HttpServerConfigResponse, String> {
+    get_http_server_config_inner(&config)
+}
+
+pub fn update_http_server_config_inner(
+    config: &ConfigState,
+    update: HttpServerConfigUpdate,
+) -> Result<HttpServerConfigResponse, String> {
+    config.update(|c| {
+        if let Some(port) = update.port {
+            c.http_server.port = port;
+        }
+        if let Some(bind_address) = update.bind_address.clone() {
+            c.http_server.bind_address = bind_address;
+        }
+        c.http_server.ensure_auth_token();
+    })?;
+    get_http_server_config_inner(config)
+}
+
+#[tauri::command]
+pub fn update_http_server_config(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+    update: HttpServerConfigUpdate,
+) -> Result<HttpServerConfigResponse, String> {
+    let result = update_http_server_config_inner(&config, update)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(result)
+}
+
+pub fn regenerate_auth_token_inner(config: &ConfigState) -> Result<String, String> {
+    let new_token = config.update(|c| {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let bytes: [u8; 32] = rng.gen();
+        c.http_server.auth_token = hex::encode(bytes);
+    })?;
+    Ok(new_token.http_server.auth_token)
+}
+
+#[tauri::command]
+pub fn regenerate_auth_token(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+) -> Result<String, String> {
+    let token = regenerate_auth_token_inner(&config)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(token)
+}
+
+fn get_local_ip_address() -> Option<String> {
+    use std::net::UdpSocket;
+    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    socket.local_addr().ok().map(|addr| addr.ip().to_string())
+}
+
+pub fn get_local_ip_inner() -> Result<String, String> {
+    get_local_ip_address().ok_or_else(|| "Could not determine local IP address".to_string())
+}
+
+#[tauri::command]
+pub fn get_local_ip() -> Result<String, String> {
+    get_local_ip_inner()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

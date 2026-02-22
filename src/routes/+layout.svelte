@@ -9,6 +9,7 @@
 	import QuitDialog from '$lib/components/dialogs/quit-dialog.svelte';
 	import AgentCrashedDialog from '$lib/components/dialogs/agent-crashed-dialog.svelte';
 	import AuthTokenDialog from '$lib/components/dialogs/auth-token-dialog.svelte';
+	import ConnectionStatus from '$lib/components/connection-status.svelte';
 	import {
 		repoSelectorState,
 		branchNameState,
@@ -273,3 +274,4 @@
 	ondismiss={handleDismissCrashed}
 />
 <AuthTokenDialog bind:open={authDialogOpen} onconfirm={handleAuthToken} />
+<ConnectionStatus />

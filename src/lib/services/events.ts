@@ -1,3 +1,4 @@
+import { writable } from 'svelte/store';
 import { getTransportMode, getWebSocketUrl, type TransportMode } from './db.js';
 
 interface MaestroEvent {
@@ -6,6 +7,10 @@ interface MaestroEvent {
 }
 
 type EventCallback<T> = (payload: T) => void;
+
+export type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
+
+export const connectionStatus = writable<ConnectionStatus>('disconnected');
 
 class WebSocketEventManager {
 	private ws: WebSocket | null = null;
@@ -28,6 +33,9 @@ class WebSocketEventManager {
 
 		this.connecting = true;
 		const isReconnect = this.hasConnectedBefore;
+		if (isReconnect) {
+			connectionStatus.set('reconnecting');
+		}
 
 		try {
 			const url = getWebSocketUrl('/ws/events');
@@ -41,6 +49,7 @@ class WebSocketEventManager {
 					this.connecting = false;
 					this.reconnectAttempts = 0;
 					this.hasConnectedBefore = true;
+					connectionStatus.set('connected');
 					if (isReconnect) {
 						this.dispatchLocalEvent('__ws_reconnected__', {});
 					}
@@ -55,6 +64,7 @@ class WebSocketEventManager {
 				ws.onclose = () => {
 					this.connected = false;
 					this.connecting = false;
+					connectionStatus.set(this.hasConnectedBefore ? 'reconnecting' : 'disconnected');
 					this.scheduleReconnect();
 				};
 
@@ -64,6 +74,7 @@ class WebSocketEventManager {
 			});
 		} catch {
 			this.connecting = false;
+			connectionStatus.set(this.hasConnectedBefore ? 'reconnecting' : 'disconnected');
 			this.scheduleReconnect();
 			throw new Error('Failed to connect to event WebSocket');
 		}
@@ -154,6 +165,7 @@ class WebSocketEventManager {
 
 		this.connected = false;
 		this.connecting = false;
+		connectionStatus.set('disconnected');
 	}
 
 	private dispatchLocalEvent(eventType: string, payload: unknown): void {

@@ -2,6 +2,7 @@
 	import StatusManager from '$lib/components/status-manager.svelte';
 	import LinkedDirectories from '$lib/components/settings/linked-directories.svelte';
 	import AuthToken from '$lib/components/settings/auth-token.svelte';
+	import HttpServerSettings from '$lib/components/settings/http-server-settings.svelte';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { currentProject } from '$lib/stores/project.js';
 </script>
@@ -47,6 +48,17 @@
 					Manage authentication for HTTP server connections.
 				</p>
 				<AuthToken />
+			</section>
+
+			<Separator class="my-8" />
+
+			<section>
+				<h2 class="mb-4 text-base font-semibold">HTTP Server</h2>
+				<p class="mb-4 text-sm text-muted-foreground">
+					Configure the HTTP server for browser-based access. This allows you to use Maestro from
+					a web browser, either on this machine or from other devices on your network.
+				</p>
+				<HttpServerSettings />
 			</section>
 		</div>
 	</div>
