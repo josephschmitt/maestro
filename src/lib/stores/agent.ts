@@ -7,6 +7,7 @@ import {
 	listWorkspaces as listWorkspacesService,
 	sendAgentInput as sendAgentInputService
 } from '$lib/services/agent.js';
+import { connectAgentStream, type AgentStreamConnection } from '$lib/services/agent-ws.js';
 import { currentProject } from './project.js';
 
 export interface AgentOutputLine {
@@ -18,7 +19,7 @@ export const workspaces = writable<AgentWorkspace[]>([]);
 export const activeWorkspaceId = writable<string | null>(null);
 export const agentOutput = writable<Map<string, AgentOutputLine[]>>(new Map());
 
-const unlistenFns = new Map<string, () => void>();
+const agentConnections = new Map<string, AgentStreamConnection>();
 
 export const activeWorkspace = derived(
 	[workspaces, activeWorkspaceId],
@@ -63,7 +64,7 @@ export async function startAgent(
 	await loadWorkspaces(cardId);
 	activeWorkspaceId.set(workspace.id);
 
-	await listenForOutput(workspace.id);
+	listenForOutput(workspace.id);
 
 	return workspace;
 }
@@ -92,64 +93,59 @@ export async function resumeAgent(workspaceId: string, cardId: string): Promise<
 	await loadWorkspaces(cardId);
 	activeWorkspaceId.set(workspace.id);
 
-	await listenForOutput(workspace.id);
+	listenForOutput(workspace.id);
 
 	return workspace;
 }
 
 export async function sendInput(workspaceId: string, text: string): Promise<void> {
-	await sendAgentInputService(workspaceId, text);
-}
-
-async function listenForOutput(workspaceId: string): Promise<void> {
-	try {
-		const { listen } = await import('@tauri-apps/api/event');
-
-		const unlistenOutput = await listen<AgentOutputLine>(
-			`agent-output-${workspaceId}`,
-			(event) => {
-				agentOutput.update((m) => {
-					const lines = m.get(workspaceId) ?? [];
-					lines.push(event.payload);
-					m.set(workspaceId, [...lines]);
-					return new Map(m);
-				});
-			}
-		);
-
-		const unlistenExit = await listen<{ workspace_id: string; exit_code: number | null; status: string }>(
-			`agent-exit-${workspaceId}`,
-			(event) => {
-				workspaces.update((ws) =>
-					ws.map((w) =>
-						w.id === workspaceId ? { ...w, status: event.payload.status as AgentWorkspace['status'] } : w
-					)
-				);
-				cleanupListener(workspaceId);
-			}
-		);
-
-		const cleanup = () => {
-			unlistenOutput();
-			unlistenExit();
-		};
-		unlistenFns.set(workspaceId, cleanup);
-	} catch {
-		// Not in Tauri environment (browser mock mode) — skip event listening
+	const connection = agentConnections.get(workspaceId);
+	if (connection) {
+		connection.sendInput(text);
+	} else {
+		await sendAgentInputService(workspaceId, text);
 	}
 }
 
+function listenForOutput(workspaceId: string): void {
+	if (agentConnections.has(workspaceId)) {
+		return;
+	}
+
+	const connection = connectAgentStream(
+		workspaceId,
+		(event) => {
+			agentOutput.update((m) => {
+				const lines = m.get(workspaceId) ?? [];
+				lines.push(event);
+				m.set(workspaceId, [...lines]);
+				return new Map(m);
+			});
+		},
+		(event) => {
+			workspaces.update((ws) =>
+				ws.map((w) =>
+					w.id === workspaceId ? { ...w, status: event.status as AgentWorkspace['status'] } : w
+				)
+			);
+			cleanupListener(workspaceId);
+		}
+	);
+
+	agentConnections.set(workspaceId, connection);
+}
+
 function cleanupListener(workspaceId: string): void {
-	const unlisten = unlistenFns.get(workspaceId);
-	if (unlisten) {
-		unlisten();
-		unlistenFns.delete(workspaceId);
+	const connection = agentConnections.get(workspaceId);
+	if (connection) {
+		connection.disconnect();
+		agentConnections.delete(workspaceId);
 	}
 }
 
 export function cleanupAllListeners(): void {
-	for (const [id, unlisten] of unlistenFns) {
-		unlisten();
+	for (const [, connection] of agentConnections) {
+		connection.disconnect();
 	}
-	unlistenFns.clear();
+	agentConnections.clear();
 }
