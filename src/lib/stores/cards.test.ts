@@ -19,7 +19,7 @@ vi.mock('./project.js', async () => {
 	};
 });
 
-import { cards, cardsByStatus, loadCards, addCard, moveCard, removeCard, getCardProgress } from './cards.js';
+import { cards, cardsByStatus, loadCards, addCard, moveCard, removeCard, getCardProgress, subCardsCache } from './cards.js';
 import * as cardsService from '$lib/services/cards.js';
 
 function makeCard(overrides: Partial<CardWithStatus> = {}): CardWithStatus {
@@ -43,6 +43,7 @@ function makeCard(overrides: Partial<CardWithStatus> = {}): CardWithStatus {
 describe('cards store', () => {
 	beforeEach(() => {
 		cards.set([]);
+		subCardsCache.set(new Map());
 		vi.clearAllMocks();
 	});
 
@@ -132,13 +133,14 @@ describe('cards store', () => {
 	});
 
 	describe('getCardProgress', () => {
-		it('counts completed sub-cards', () => {
-			cards.set([
-				makeCard({ id: 'parent', parent_id: null }),
-				makeCard({ id: 'child-1', parent_id: 'parent', status_group: 'Started' }),
-				makeCard({ id: 'child-2', parent_id: 'parent', status_group: 'Completed' }),
-				makeCard({ id: 'child-3', parent_id: 'parent', status_group: 'Completed' })
-			]);
+		it('counts completed sub-cards from cache', () => {
+			subCardsCache.set(new Map([
+				['parent', [
+					makeCard({ id: 'child-1', parent_id: 'parent', status_group: 'Started' }),
+					makeCard({ id: 'child-2', parent_id: 'parent', status_group: 'Completed' }),
+					makeCard({ id: 'child-3', parent_id: 'parent', status_group: 'Completed' })
+				]]
+			]));
 
 			const progress = getCardProgress('parent');
 			expect(progress.completed).toBe(2);
@@ -146,7 +148,6 @@ describe('cards store', () => {
 		});
 
 		it('returns zero for card with no sub-cards', () => {
-			cards.set([makeCard({ id: 'solo', parent_id: null })]);
 			const progress = getCardProgress('solo');
 			expect(progress.completed).toBe(0);
 			expect(progress.total).toBe(0);
