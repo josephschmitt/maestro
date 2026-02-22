@@ -8,6 +8,7 @@
 	import BranchNameDialog from '$lib/components/dialogs/branch-name-dialog.svelte';
 	import QuitDialog from '$lib/components/dialogs/quit-dialog.svelte';
 	import AgentCrashedDialog from '$lib/components/dialogs/agent-crashed-dialog.svelte';
+	import AuthTokenDialog from '$lib/components/dialogs/auth-token-dialog.svelte';
 	import {
 		repoSelectorState,
 		branchNameState,
@@ -21,6 +22,7 @@
 	import { listenEvent } from '$lib/services/events.js';
 	import { listRunningWorkspaces, stopAllAgents } from '$lib/services/agent.js';
 	import { resumeAgent } from '$lib/stores/agent.js';
+	import { authStore, authPromptOpen } from '$lib/stores/auth.js';
 	import { onMount, onDestroy } from 'svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
@@ -42,7 +44,12 @@
 	let quitRunningCount = $state(0);
 	let crashDialogOpen = $state(false);
 	let crashedAgents = $state<CrashedAgent[]>([]);
+	let authDialogOpen = $state(false);
 	let cleanupFns: (() => void)[] = [];
+
+	$effect(() => {
+		authDialogOpen = $authPromptOpen;
+	});
 
 	let isResizing = $state(false);
 	let startX = 0;
@@ -71,6 +78,7 @@
 	}
 
 	onMount(() => {
+		authStore.initialize();
 		initializeProject();
 		setupTauriListeners();
 		setupReconnectHandler();
@@ -170,6 +178,10 @@
 		crashedAgents = [];
 		crashDialogOpen = false;
 	}
+
+	function handleAuthToken(token: string) {
+		authStore.saveToken(token);
+	}
 </script>
 
 <svelte:head>
@@ -260,3 +272,4 @@
 	onresume={handleResumeCrashed}
 	ondismiss={handleDismissCrashed}
 />
+<AuthTokenDialog bind:open={authDialogOpen} onconfirm={handleAuthToken} />
