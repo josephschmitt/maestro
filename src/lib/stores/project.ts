@@ -33,6 +33,18 @@ export async function createProject(name: string): Promise<Project> {
 	return project;
 }
 
+export async function reloadCurrentProject(): Promise<void> {
+	let id: string | null = null;
+	const unsubscribe = currentProject.subscribe((p) => {
+		id = p?.id ?? null;
+	});
+	unsubscribe();
+	if (id) {
+		const project = await getProject(id);
+		currentProject.set(project);
+	}
+}
+
 export async function initializeProject(): Promise<void> {
 	isLoading.set(true);
 	try {

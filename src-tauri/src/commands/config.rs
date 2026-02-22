@@ -4,9 +4,10 @@ use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::config::global::{default_config_path, GlobalConfig};
+use crate::config::global::{default_config_path, AgentProfile, GlobalConfig, StatusGroupConfig};
 use crate::config::resolution::resolve_agent_config;
 use crate::executor::{EventBus, MaestroEvent};
+use std::collections::HashMap;
 
 pub struct ConfigState {
     pub(crate) config: Mutex<GlobalConfig>,
@@ -62,6 +63,7 @@ pub struct AgentProfileResponse {
     pub binary: String,
     pub flags: Vec<String>,
     pub custom_command: Option<String>,
+    pub env_vars: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,6 +83,7 @@ pub fn get_global_config_inner(config: &ConfigState) -> Result<GlobalConfigRespo
                 binary: profile.binary.clone(),
                 flags: profile.flags.clone(),
                 custom_command: profile.custom_command.clone(),
+                env_vars: profile.env_vars.clone(),
             })
             .collect();
 
@@ -229,6 +232,208 @@ pub fn regenerate_auth_token(
     let token = regenerate_auth_token_inner(&config)?;
     event_bus.emit_maestro(MaestroEvent::ConfigChanged);
     Ok(token)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GlobalConfigUpdate {
+    pub storage_base_path: Option<String>,
+    pub default_agent: Option<String>,
+}
+
+pub fn update_global_config_inner(
+    config: &ConfigState,
+    update: GlobalConfigUpdate,
+) -> Result<GlobalConfigResponse, String> {
+    config.update(|c| {
+        if let Some(path) = update.storage_base_path {
+            c.storage.base_path = path;
+        }
+        if let Some(agent) = update.default_agent {
+            c.defaults.agent = agent;
+        }
+    })?;
+    get_global_config_inner(config)
+}
+
+#[tauri::command]
+pub fn update_global_config(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+    update: GlobalConfigUpdate,
+) -> Result<GlobalConfigResponse, String> {
+    let result = update_global_config_inner(&config, update)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(result)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgentProfileInput {
+    pub name: String,
+    pub binary: String,
+    pub flags: Vec<String>,
+    pub custom_command: Option<String>,
+    pub env_vars: Option<HashMap<String, String>>,
+}
+
+pub fn create_agent_profile_inner(
+    config: &ConfigState,
+    profile: AgentProfileInput,
+) -> Result<GlobalConfigResponse, String> {
+    config.update(|c| {
+        if c.agents.contains_key(&profile.name) {
+            return;
+        }
+        c.agents.insert(
+            profile.name.clone(),
+            AgentProfile {
+                binary: profile.binary,
+                flags: profile.flags,
+                custom_command: profile.custom_command,
+                env_vars: profile.env_vars,
+            },
+        );
+    })?;
+    get_global_config_inner(config)
+}
+
+#[tauri::command]
+pub fn create_agent_profile(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+    profile: AgentProfileInput,
+) -> Result<GlobalConfigResponse, String> {
+    let result = create_agent_profile_inner(&config, profile)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(result)
+}
+
+pub fn update_agent_profile_inner(
+    config: &ConfigState,
+    name: &str,
+    profile: AgentProfileInput,
+) -> Result<GlobalConfigResponse, String> {
+    config.update(|c| {
+        if !c.agents.contains_key(name) {
+            return;
+        }
+        c.agents.remove(name);
+        c.agents.insert(
+            profile.name.clone(),
+            AgentProfile {
+                binary: profile.binary,
+                flags: profile.flags,
+                custom_command: profile.custom_command,
+                env_vars: profile.env_vars,
+            },
+        );
+    })?;
+    get_global_config_inner(config)
+}
+
+#[tauri::command]
+pub fn update_agent_profile(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+    name: String,
+    profile: AgentProfileInput,
+) -> Result<GlobalConfigResponse, String> {
+    let result = update_agent_profile_inner(&config, &name, profile)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(result)
+}
+
+pub fn delete_agent_profile_inner(
+    config: &ConfigState,
+    name: &str,
+) -> Result<GlobalConfigResponse, String> {
+    config.update(|c| {
+        c.agents.remove(name);
+    })?;
+    get_global_config_inner(config)
+}
+
+#[tauri::command]
+pub fn delete_agent_profile(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+    name: String,
+) -> Result<GlobalConfigResponse, String> {
+    let result = delete_agent_profile_inner(&config, &name)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(result)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StatusGroupConfigInput {
+    pub agent: Option<String>,
+    pub model: Option<String>,
+    pub instructions: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StatusGroupDefaultsResponse {
+    pub status: HashMap<String, StatusGroupConfigInput>,
+}
+
+pub fn get_status_group_defaults_inner(
+    config: &ConfigState,
+) -> Result<StatusGroupDefaultsResponse, String> {
+    config.with_config(|c| {
+        let status: HashMap<String, StatusGroupConfigInput> = c
+            .defaults
+            .status
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    StatusGroupConfigInput {
+                        agent: v.agent.clone(),
+                        model: v.model.clone(),
+                        instructions: v.instructions.clone(),
+                    },
+                )
+            })
+            .collect();
+        Ok(StatusGroupDefaultsResponse { status })
+    })
+}
+
+#[tauri::command]
+pub fn get_status_group_defaults(
+    config: State<ConfigState>,
+) -> Result<StatusGroupDefaultsResponse, String> {
+    get_status_group_defaults_inner(&config)
+}
+
+pub fn update_status_group_defaults_inner(
+    config: &ConfigState,
+    status_group: &str,
+    group_config: StatusGroupConfigInput,
+) -> Result<StatusGroupDefaultsResponse, String> {
+    config.update(|c| {
+        let key = status_group.to_lowercase();
+        c.defaults.status.insert(
+            key,
+            StatusGroupConfig {
+                agent: group_config.agent,
+                model: group_config.model,
+                instructions: group_config.instructions,
+            },
+        );
+    })?;
+    get_status_group_defaults_inner(config)
+}
+
+#[tauri::command]
+pub fn update_status_group_defaults(
+    config: State<ConfigState>,
+    event_bus: State<Arc<EventBus>>,
+    status_group: String,
+    group_config: StatusGroupConfigInput,
+) -> Result<StatusGroupDefaultsResponse, String> {
+    let result = update_status_group_defaults_inner(&config, &status_group, group_config)?;
+    event_bus.emit_maestro(MaestroEvent::ConfigChanged);
+    Ok(result)
 }
 
 fn get_local_ip_address() -> Option<String> {
