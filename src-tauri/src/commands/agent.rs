@@ -6,10 +6,10 @@ use tauri::{AppHandle, State};
 use crate::commands::config::ConfigState;
 use crate::commands::projects::open_project_db;
 use crate::executor::context::{assemble_context, CardInfo};
-use crate::executor::lifecycle::{start_lifecycle_monitor, stop_agent_process};
+use crate::executor::lifecycle::{start_lifecycle_monitor_inner, stop_agent_process};
 use crate::executor::spawn::spawn_agent;
-use crate::executor::stream::{start_stderr_streaming, start_stdin_forwarding, start_stdout_streaming};
-use crate::executor::{AgentHandle, AgentRegistry};
+use crate::executor::stream::{start_stderr_streaming_inner, start_stdin_forwarding, start_stdout_streaming_inner};
+use crate::executor::{AgentHandle, AgentRegistry, EventBus};
 use crate::fs::worktrees as worktree_fs;
 use crate::ipc::server::IpcServer;
 
@@ -72,20 +72,20 @@ fn collect_artifact_contents(artifacts_dir: &std::path::Path) -> Vec<(String, St
     contents
 }
 
-#[tauri::command]
-pub async fn launch_agent(
-    app: AppHandle,
-    config: State<'_, ConfigState>,
-    registry: State<'_, Arc<AgentRegistry>>,
-    project_id: String,
-    card_id: String,
-    status_id: String,
+pub async fn launch_agent_inner(
+    app: Option<AppHandle>,
+    event_bus: Option<Arc<EventBus>>,
+    config: &ConfigState,
+    registry: &Arc<AgentRegistry>,
+    project_id: &str,
+    card_id: &str,
+    status_id: &str,
     worktree_path: Option<String>,
     branch_name: Option<String>,
     repo_path: Option<String>,
 ) -> Result<AgentWorkspace, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     let (card_title, card_description, parent_title, parent_description, project_agent_config, status_group, status_prompts) =
         db.with_conn(|conn| {
@@ -136,7 +136,7 @@ pub async fn launch_agent(
         })?;
 
     let card_info = CardInfo {
-        id: card_id.clone(),
+        id: card_id.to_string(),
         title: card_title.clone(),
         description: card_description,
         parent_title,
@@ -145,7 +145,7 @@ pub async fn launch_agent(
 
     let is_implementation = repo_path.is_some();
     let worktree_name = if is_implementation {
-        Some(worktree_fs::worktree_name_from_card(&card_id, &card_title))
+        Some(worktree_fs::worktree_name_from_card(card_id, &card_title))
     } else {
         None
     };
@@ -157,9 +157,9 @@ pub async fn launch_agent(
     } else {
         base_path
             .join("projects")
-            .join(&project_id)
+            .join(project_id)
             .join("artifacts")
-            .join(&card_id)
+            .join(card_id)
     };
 
     let db_worktree_path = if let (Some(ref rp), Some(ref wt_name)) = (&repo_path, &worktree_name) {
@@ -172,9 +172,9 @@ pub async fn launch_agent(
 
     let artifacts_dir = base_path
         .join("projects")
-        .join(&project_id)
+        .join(project_id)
         .join("artifacts")
-        .join(&card_id);
+        .join(card_id);
 
     let artifact_contents = if is_implementation || worktree_path.is_some() {
         collect_artifact_contents(&artifacts_dir)
@@ -182,7 +182,7 @@ pub async fn launch_agent(
         Vec::new()
     };
 
-    let socket_path = IpcServer::socket_path(&project_id);
+    let socket_path = IpcServer::socket_path(project_id);
     let socket_path_str = if socket_path.exists() {
         Some(socket_path.to_string_lossy().to_string())
     } else {
@@ -232,8 +232,8 @@ pub async fn launch_agent(
         .map_err(|e| format!("Failed to read workspace: {e}"))
     })?;
 
-    start_stdout_streaming(app.clone(), workspace_id.clone(), stdout);
-    start_stderr_streaming(app.clone(), workspace_id.clone(), stderr);
+    start_stdout_streaming_inner(app.clone(), event_bus.clone(), workspace_id.clone(), stdout);
+    start_stderr_streaming_inner(app.clone(), event_bus.clone(), workspace_id.clone(), stderr);
 
     let (stdin_tx, stdin_rx) = tokio::sync::mpsc::channel::<String>(64);
     start_stdin_forwarding(stdin, stdin_rx);
@@ -245,16 +245,57 @@ pub async fn launch_agent(
     };
     registry.insert(handle);
 
-    start_lifecycle_monitor(
+    start_lifecycle_monitor_inner(
         app,
-        Arc::clone(&registry),
+        event_bus,
+        Arc::clone(registry),
         spawned.child,
         workspace_id,
-        project_id,
+        project_id.to_string(),
         base_path,
     );
 
     Ok(workspace)
+}
+
+#[tauri::command]
+pub async fn launch_agent(
+    app: AppHandle,
+    config: State<'_, ConfigState>,
+    registry: State<'_, Arc<AgentRegistry>>,
+    project_id: String,
+    card_id: String,
+    status_id: String,
+    worktree_path: Option<String>,
+    branch_name: Option<String>,
+    repo_path: Option<String>,
+) -> Result<AgentWorkspace, String> {
+    launch_agent_inner(
+        Some(app),
+        None,
+        &config,
+        &registry,
+        &project_id,
+        &card_id,
+        &status_id,
+        worktree_path,
+        branch_name,
+        repo_path,
+    ).await
+}
+
+pub async fn send_agent_input_inner(
+    registry: &Arc<AgentRegistry>,
+    workspace_id: &str,
+    text: &str,
+) -> Result<(), String> {
+    let tx = registry
+        .get_stdin_tx(workspace_id)
+        .ok_or_else(|| format!("No running agent for workspace {workspace_id}"))?;
+
+    tx.send(text.to_string())
+        .await
+        .map_err(|e| format!("Failed to send input: {e}"))
 }
 
 #[tauri::command]
@@ -263,30 +304,23 @@ pub async fn send_agent_input(
     workspace_id: String,
     text: String,
 ) -> Result<(), String> {
-    let tx = registry
-        .get_stdin_tx(&workspace_id)
-        .ok_or_else(|| format!("No running agent for workspace {workspace_id}"))?;
-
-    tx.send(text)
-        .await
-        .map_err(|e| format!("Failed to send input: {e}"))
+    send_agent_input_inner(&registry, &workspace_id, &text).await
 }
 
-#[tauri::command]
-pub async fn stop_agent(
-    config: State<'_, ConfigState>,
-    registry: State<'_, Arc<AgentRegistry>>,
-    project_id: String,
-    workspace_id: String,
+pub async fn stop_agent_inner(
+    config: &ConfigState,
+    registry: &Arc<AgentRegistry>,
+    project_id: &str,
+    workspace_id: &str,
 ) -> Result<AgentWorkspace, String> {
     let handle = registry
-        .remove(&workspace_id)
+        .remove(workspace_id)
         .ok_or_else(|| format!("No running agent for workspace {workspace_id}"))?;
 
     stop_agent_process(handle.pid).await?;
 
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     let completed_at = chrono::Utc::now().to_rfc3339();
     db.with_conn(|conn| {
@@ -306,13 +340,22 @@ pub async fn stop_agent(
 }
 
 #[tauri::command]
-pub fn list_workspaces(
-    config: State<ConfigState>,
+pub async fn stop_agent(
+    config: State<'_, ConfigState>,
+    registry: State<'_, Arc<AgentRegistry>>,
     project_id: String,
-    card_id: String,
+    workspace_id: String,
+) -> Result<AgentWorkspace, String> {
+    stop_agent_inner(&config, &registry, &project_id, &workspace_id).await
+}
+
+pub fn list_workspaces_inner(
+    config: &ConfigState,
+    project_id: &str,
+    card_id: &str,
 ) -> Result<Vec<AgentWorkspace>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         let mut stmt = conn
@@ -331,13 +374,21 @@ pub fn list_workspaces(
 }
 
 #[tauri::command]
-pub fn get_workspace(
+pub fn list_workspaces(
     config: State<ConfigState>,
     project_id: String,
-    workspace_id: String,
+    card_id: String,
+) -> Result<Vec<AgentWorkspace>, String> {
+    list_workspaces_inner(&config, &project_id, &card_id)
+}
+
+pub fn get_workspace_inner(
+    config: &ConfigState,
+    project_id: &str,
+    workspace_id: &str,
 ) -> Result<AgentWorkspace, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     db.with_conn(|conn| {
         conn.query_row(
@@ -350,16 +401,25 @@ pub fn get_workspace(
 }
 
 #[tauri::command]
-pub async fn resume_agent(
-    app: AppHandle,
-    config: State<'_, ConfigState>,
-    registry: State<'_, Arc<AgentRegistry>>,
+pub fn get_workspace(
+    config: State<ConfigState>,
     project_id: String,
     workspace_id: String,
-    card_id: String,
+) -> Result<AgentWorkspace, String> {
+    get_workspace_inner(&config, &project_id, &workspace_id)
+}
+
+pub async fn resume_agent_inner(
+    app: Option<AppHandle>,
+    event_bus: Option<Arc<EventBus>>,
+    config: &ConfigState,
+    registry: &Arc<AgentRegistry>,
+    project_id: &str,
+    workspace_id: &str,
+    card_id: &str,
 ) -> Result<AgentWorkspace, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
-    let db = open_project_db(&base_path, &project_id)?;
+    let db = open_project_db(&base_path, project_id)?;
 
     let (session_id, old_worktree_path, old_branch_name) = db.with_conn(|conn| {
         conn.query_row(
@@ -417,7 +477,7 @@ pub async fn resume_agent(
         })?;
 
     let card_info = CardInfo {
-        id: card_id.clone(),
+        id: card_id.to_string(),
         title: card_title.clone(),
         description: card_description,
         parent_title,
@@ -426,7 +486,7 @@ pub async fn resume_agent(
 
     let is_implementation = old_worktree_path.is_some();
     let worktree_name = if is_implementation {
-        Some(worktree_fs::worktree_name_from_card(&card_id, &card_title))
+        Some(worktree_fs::worktree_name_from_card(card_id, &card_title))
     } else {
         None
     };
@@ -436,18 +496,18 @@ pub async fn resume_agent(
     } else {
         base_path
             .join("projects")
-            .join(&project_id)
+            .join(project_id)
             .join("artifacts")
-            .join(&card_id)
+            .join(card_id)
     };
 
     let working_dir_str = working_dir.to_string_lossy().to_string();
 
     let artifacts_dir = base_path
         .join("projects")
-        .join(&project_id)
+        .join(project_id)
         .join("artifacts")
-        .join(&card_id);
+        .join(card_id);
 
     let artifact_contents = if is_implementation {
         collect_artifact_contents(&artifacts_dir)
@@ -455,7 +515,7 @@ pub async fn resume_agent(
         Vec::new()
     };
 
-    let socket_path = IpcServer::socket_path(&project_id);
+    let socket_path = IpcServer::socket_path(project_id);
     let socket_path_str = if socket_path.exists() {
         Some(socket_path.to_string_lossy().to_string())
     } else {
@@ -525,8 +585,8 @@ pub async fn resume_agent(
         .map_err(|e| format!("Failed to read workspace: {e}"))
     })?;
 
-    start_stdout_streaming(app.clone(), new_workspace_id.clone(), stdout);
-    start_stderr_streaming(app.clone(), new_workspace_id.clone(), stderr);
+    start_stdout_streaming_inner(app.clone(), event_bus.clone(), new_workspace_id.clone(), stdout);
+    start_stderr_streaming_inner(app.clone(), event_bus.clone(), new_workspace_id.clone(), stderr);
 
     let (stdin_tx, stdin_rx) = tokio::sync::mpsc::channel::<String>(64);
     start_stdin_forwarding(stdin, stdin_rx);
@@ -538,12 +598,13 @@ pub async fn resume_agent(
     };
     registry.insert(handle);
 
-    start_lifecycle_monitor(
+    start_lifecycle_monitor_inner(
         app,
-        Arc::clone(&registry),
+        event_bus,
+        Arc::clone(registry),
         spawned.child,
         new_workspace_id,
-        project_id,
+        project_id.to_string(),
         base_path,
     );
 
@@ -551,8 +612,27 @@ pub async fn resume_agent(
 }
 
 #[tauri::command]
-pub fn list_running_workspaces(
-    config: State<ConfigState>,
+pub async fn resume_agent(
+    app: AppHandle,
+    config: State<'_, ConfigState>,
+    registry: State<'_, Arc<AgentRegistry>>,
+    project_id: String,
+    workspace_id: String,
+    card_id: String,
+) -> Result<AgentWorkspace, String> {
+    resume_agent_inner(
+        Some(app),
+        None,
+        &config,
+        &registry,
+        &project_id,
+        &workspace_id,
+        &card_id,
+    ).await
+}
+
+pub fn list_running_workspaces_inner(
+    config: &ConfigState,
 ) -> Result<Vec<AgentWorkspace>, String> {
     let base_path = config.with_config(|c| Ok(c.resolve_base_path()))?;
     let projects_dir = base_path.join("projects");
@@ -607,9 +687,15 @@ pub fn list_running_workspaces(
 }
 
 #[tauri::command]
-pub async fn stop_all_agents(
-    config: State<'_, ConfigState>,
-    registry: State<'_, Arc<AgentRegistry>>,
+pub fn list_running_workspaces(
+    config: State<ConfigState>,
+) -> Result<Vec<AgentWorkspace>, String> {
+    list_running_workspaces_inner(&config)
+}
+
+pub async fn stop_all_agents_inner(
+    config: &ConfigState,
+    registry: &Arc<AgentRegistry>,
 ) -> Result<(), String> {
     let pids = registry.all_pids();
 
@@ -659,6 +745,14 @@ pub async fn stop_all_agents(
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn stop_all_agents(
+    config: State<'_, ConfigState>,
+    registry: State<'_, Arc<AgentRegistry>>,
+) -> Result<(), String> {
+    stop_all_agents_inner(&config, &registry).await
 }
 
 #[tauri::command]

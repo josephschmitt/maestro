@@ -70,8 +70,7 @@ pub struct ResolvedAgentConfigResponse {
     pub instructions: Option<String>,
 }
 
-#[tauri::command]
-pub fn get_global_config(config: State<ConfigState>) -> Result<GlobalConfigResponse, String> {
+pub fn get_global_config_inner(config: &ConfigState) -> Result<GlobalConfigResponse, String> {
     config.with_config(|c| {
         let agents = c
             .agents
@@ -94,11 +93,35 @@ pub fn get_global_config(config: State<ConfigState>) -> Result<GlobalConfigRespo
 }
 
 #[tauri::command]
-pub fn set_last_project(config: State<ConfigState>, project_id: String) -> Result<(), String> {
+pub fn get_global_config(config: State<ConfigState>) -> Result<GlobalConfigResponse, String> {
+    get_global_config_inner(&config)
+}
+
+pub fn set_last_project_inner(config: &ConfigState, project_id: &str) -> Result<(), String> {
     config.update(|c| {
-        c.defaults.last_project_id = project_id;
+        c.defaults.last_project_id = project_id.to_string();
     })?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn set_last_project(config: State<ConfigState>, project_id: String) -> Result<(), String> {
+    set_last_project_inner(&config, &project_id)
+}
+
+pub fn resolve_config_inner(
+    config: &ConfigState,
+    project_agent_config: &serde_json::Value,
+    status_group: &str,
+) -> Result<ResolvedAgentConfigResponse, String> {
+    config.with_config(|c| {
+        let resolved = resolve_agent_config(c, project_agent_config, status_group);
+        Ok(ResolvedAgentConfigResponse {
+            agent: resolved.agent,
+            model: resolved.model,
+            instructions: resolved.instructions,
+        })
+    })
 }
 
 #[tauri::command]
@@ -107,14 +130,7 @@ pub fn resolve_config(
     project_agent_config: serde_json::Value,
     status_group: String,
 ) -> Result<ResolvedAgentConfigResponse, String> {
-    config.with_config(|c| {
-        let resolved = resolve_agent_config(c, &project_agent_config, &status_group);
-        Ok(ResolvedAgentConfigResponse {
-            agent: resolved.agent,
-            model: resolved.model,
-            instructions: resolved.instructions,
-        })
-    })
+    resolve_config_inner(&config, &project_agent_config, &status_group)
 }
 
 #[cfg(test)]

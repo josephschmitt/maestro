@@ -6,7 +6,7 @@ use tokio::time::Duration;
 
 use crate::commands::projects::open_project_db;
 
-use super::AgentRegistry;
+use super::{AgentEvent, AgentRegistry, EventBus};
 
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,18 @@ pub struct AgentExitEvent {
 
 pub fn start_lifecycle_monitor(
     app: AppHandle,
+    registry: Arc<AgentRegistry>,
+    child: Child,
+    workspace_id: String,
+    project_id: String,
+    base_path: PathBuf,
+) {
+    start_lifecycle_monitor_inner(Some(app), None, registry, child, workspace_id, project_id, base_path);
+}
+
+pub fn start_lifecycle_monitor_inner(
+    app: Option<AppHandle>,
+    event_bus: Option<Arc<EventBus>>,
     registry: Arc<AgentRegistry>,
     mut child: Child,
     workspace_id: String,
@@ -57,9 +69,14 @@ pub fn start_lifecycle_monitor(
         let event = AgentExitEvent {
             workspace_id: workspace_id.clone(),
             exit_code,
-            status,
+            status: status.clone(),
         };
-        let _ = app.emit(&format!("agent-exit-{}", workspace_id), &event);
+        if let Some(ref bus) = event_bus {
+            bus.emit(AgentEvent::Exit(event.clone()));
+        }
+        if let Some(ref handle) = app {
+            let _ = handle.emit(&format!("agent-exit-{}", workspace_id), &event);
+        }
     });
 }
 
