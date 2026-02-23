@@ -1,15 +1,32 @@
-name: Release Build
+name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .release-please-manifest.json
+
   build:
     name: Build (${{ matrix.target }})
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -90,8 +107,8 @@ jobs:
           APPLE_API_KEY_PATH: ${{ runner.temp }}/apple-api-key.p8
           TAURI_SIGNING_PRIVATE_KEY: ""
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: ${{ github.ref_name }}
+          tagName: ${{ needs.release-please.outputs.tag_name }}
+          releaseName: ${{ needs.release-please.outputs.tag_name }}
           releaseBody: "See the changelog in the release notes."
           releaseDraft: false
           prerelease: false
@@ -104,8 +121,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ""
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: ${{ github.ref_name }}
+          tagName: ${{ needs.release-please.outputs.tag_name }}
+          releaseName: ${{ needs.release-please.outputs.tag_name }}
           releaseBody: "See the changelog in the release notes."
           releaseDraft: false
           prerelease: false
@@ -113,7 +130,7 @@ jobs:
 
       - name: Rename DMG for architecture
         env:
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
           TARGET: ${{ matrix.target }}
           ARCH: ${{ matrix.arch }}
         run: |
@@ -127,6 +144,7 @@ jobs:
       - name: Upload DMG to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
