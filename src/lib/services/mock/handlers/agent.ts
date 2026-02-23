@@ -25,8 +25,8 @@ export function launch_agent(args: Record<string, unknown>): AgentWorkspace {
 	return workspace;
 }
 
-export function send_agent_input(_args: Record<string, unknown>): void {
-	// No-op in mock mode
+export function send_agent_input(_: Record<string, unknown>): void {
+	void _; // No-op in mock mode
 }
 
 export function stop_agent(args: Record<string, unknown>): AgentWorkspace {

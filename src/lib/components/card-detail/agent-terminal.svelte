@@ -10,7 +10,7 @@
 	let terminalEl: HTMLDivElement | undefined = $state();
 
 	$effect(() => {
-		lines;
+		void lines;
 		if (terminalEl) {
 			terminalEl.scrollTop = terminalEl.scrollHeight;
 		}

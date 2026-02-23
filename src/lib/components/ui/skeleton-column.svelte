@@ -15,7 +15,7 @@
 		<Skeleton class="size-6 rounded" />
 	</div>
 	<div class="flex flex-col gap-2">
-		{#each Array(cardCount) as _, i (i)}
+		{#each {length: cardCount} as _, i (i)}
 			<SkeletonCard />
 		{/each}
 	</div>

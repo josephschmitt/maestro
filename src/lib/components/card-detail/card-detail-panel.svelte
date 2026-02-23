@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CardWithStatus, Status } from '$lib/types/index.js';
+	import type { CardWithStatus } from '$lib/types/index.js';
 	import SlideOver from '$lib/components/ui/slide-over.svelte';
 	import CardHeader from './card-header.svelte';
 	import CardDescription from './card-description.svelte';
@@ -8,7 +8,6 @@
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { getSubCards, updateCard, moveCard, addCard, loadCards, cardsLoading } from '$lib/stores/cards.js';
 	import { statuses as allStatuses } from '$lib/stores/statuses.js';
-	import { onMount } from 'svelte';
 	import XIcon from '@lucide/svelte/icons/x';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import OpenQuestionsTab from './tabs/open-questions-tab.svelte';
@@ -45,7 +44,7 @@
 	}
 
 	$effect(() => {
-		cardId;
+		void cardId;
 		focusMode = false;
 		loadSubCards();
 	});

@@ -87,7 +87,7 @@
 							{:else}
 								<code class="rounded bg-muted px-1">{agent.binary}</code>
 								{#if agent.flags.length > 0}
-									{#each agent.flags as flag}
+									{#each agent.flags as flag (flag)}
 										<code class="ml-1 rounded bg-muted px-1">{flag}</code>
 									{/each}
 								{/if}

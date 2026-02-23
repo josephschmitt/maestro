@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Status } from '$lib/types/index.js';
 	import { sendBack, approve, openPr } from '$lib/stores/review.js';
-	import SendIcon from '@lucide/svelte/icons/send';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import GitPullRequestIcon from '@lucide/svelte/icons/git-pull-request';
 	import UndoIcon from '@lucide/svelte/icons/undo-2';
@@ -94,6 +93,7 @@
 
 	{#if prUrl}
 		<div class="rounded-md bg-green-950/30 px-3 py-2 text-sm text-green-400">
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- external URL -->
 			PR created: <a href={prUrl} target="_blank" rel="noopener noreferrer" class="underline">{prUrl}</a>
 		</div>
 	{/if}

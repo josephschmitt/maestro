@@ -10,7 +10,6 @@
 	import { resolveConfig } from '$lib/services/config.js';
 	import { updateProject } from '$lib/services/projects.js';
 	import { currentProject, reloadCurrentProject } from '$lib/stores/project.js';
-	import { onMount } from 'svelte';
 	import ToggleLeftIcon from '@lucide/svelte/icons/toggle-left';
 	import ToggleRightIcon from '@lucide/svelte/icons/toggle-right';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -97,10 +96,6 @@
 		return resolvedConfigs[group]?.model ?? null;
 	}
 
-	function getResolvedInstructions(group: StatusGroup): string | null {
-		return resolvedConfigs[group]?.instructions ?? null;
-	}
-
 	async function saveConfig(newConfig: ProjectAgentConfig) {
 		if (!$currentProject) return;
 		error = null;
@@ -114,7 +109,7 @@
 
 	async function toggleDefaultAgentOverride() {
 		if (hasProjectDefaultAgentOverride()) {
-			const { agent: _, ...rest } = projectConfig;
+			const { agent: _agent, ...rest } = projectConfig;
 			projectConfig = rest;
 		} else {
 			projectConfig = { ...projectConfig, agent: globalDefaultAgent };

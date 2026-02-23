@@ -1,7 +1,5 @@
 <script lang="ts">
-	import type { OpenQuestion } from '$lib/types/index.js';
 	import {
-		questions,
 		unresolvedQuestions,
 		resolvedQuestions,
 		loadQuestions,

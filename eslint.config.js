@@ -33,6 +33,23 @@ export default ts.config(
 		}
 	},
 	{
-		ignores: ['build/', '.svelte-kit/', 'dist/', 'src-tauri/']
+		rules: {
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+			],
+			'svelte/no-at-html-tags': 'warn',
+			'svelte/prefer-writable-derived': 'warn',
+			'svelte/prefer-svelte-reactivity': 'warn'
+		}
+	},
+	{
+		files: ['src/routes/**/*.svelte'],
+		rules: {
+			'svelte/no-navigation-without-resolve': 'off'
+		}
+	},
+	{
+		ignores: ['build/', '.svelte-kit/', 'dist/', 'src-tauri/', '.devbox/', 'target/']
 	}
 );

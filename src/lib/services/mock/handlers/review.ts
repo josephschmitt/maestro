@@ -67,7 +67,8 @@ function mockFileDiff(filePath: string): FileDiff {
 	};
 }
 
-export function get_changed_files(_args: Record<string, unknown>): ChangedFile[] {
+export function get_changed_files(_: Record<string, unknown>): ChangedFile[] {
+	void _;
 	return mockChangedFiles;
 }
 
@@ -136,7 +137,8 @@ export function approve_card(args: Record<string, unknown>): void {
 	}
 }
 
-export function create_pr(_args: Record<string, unknown>): CreatePrResult {
+export function create_pr(_: Record<string, unknown>): CreatePrResult {
+	void _;
 	return { url: 'https://github.com/example/repo/pull/1' };
 }
 

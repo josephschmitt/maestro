@@ -19,7 +19,7 @@ function getInitialWidth(): number {
 }
 
 function createSidebarWidthStore() {
-	const { subscribe, set, update } = writable(getInitialWidth());
+	const { subscribe, set } = writable(getInitialWidth());
 
 	return {
 		subscribe,

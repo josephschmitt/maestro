@@ -81,7 +81,7 @@ export async function runWorktreeFlow(
 	const dirs = get(linkedDirectories);
 	const repos = dirs.filter((d) => d.is_repo);
 
-	let selectedRepo: LinkedDirectory | null = null;
+	let selectedRepo: LinkedDirectory | null;
 
 	if (repos.length === 0) {
 		return null;

@@ -10,7 +10,6 @@ import {
 	popRegion,
 	getRegionElements
 } from './context.js';
-import type { FocusElement } from './types.js';
 
 function resetStore() {
 	focusState.set({

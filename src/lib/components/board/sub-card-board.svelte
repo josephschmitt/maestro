@@ -68,7 +68,7 @@
 	}
 
 	$effect(() => {
-		parentCard.id;
+		void parentCard.id;
 		loadSubCards();
 	});
 

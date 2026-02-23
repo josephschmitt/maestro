@@ -2,7 +2,6 @@
 	import type { Snippet } from 'svelte';
 	import type { FocusRegionId } from '$lib/focus/types.js';
 	import { pushRegion, popRegion } from '$lib/focus/context.js';
-	import { onMount } from 'svelte';
 
 	let {
 		open,

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { Artifact } from '$lib/types/index.js';
 	import {
 		artifacts,
 		loadArtifacts,

@@ -25,8 +25,9 @@ export function create_worktree(args: Record<string, unknown>): string {
 }
 
 export function check_worktree_exists(
-	_args: Record<string, unknown>
+	_: Record<string, unknown>
 ): string | null {
+	void _;
 	return null;
 }
 

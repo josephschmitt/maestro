@@ -143,7 +143,7 @@
 
 {#if isLoading && !hasStatuses}
 	<div class="flex flex-1 gap-3 overflow-x-auto p-4">
-		{#each Array(5) as _, i (i)}
+		{#each {length: 5} as _, i (i)}
 			<SkeletonColumn cardCount={i === 2 ? 4 : i === 3 ? 2 : 3} />
 		{/each}
 	</div>

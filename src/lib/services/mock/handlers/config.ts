@@ -115,7 +115,7 @@ export function update_status_group_defaults(
 	return { status: { ...store.statusGroupDefaults } };
 }
 
-let mockHttpConfig = {
+const mockHttpConfig = {
 	enabled: true,
 	port: 3456,
 	bind_address: '127.0.0.1',
