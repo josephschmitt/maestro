@@ -1,7 +1,7 @@
 {
 	"$schema": "https://raw.githubusercontent.com/nickel-org/nickel.rs/master/examples/assets/schema.json",
 	"productName": "Maestro",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"identifier": "com.maestro.dev",
 	"build": {
 		"frontendDist": "../build",
