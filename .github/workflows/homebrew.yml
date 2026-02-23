@@ -38,6 +38,7 @@ jobs:
             core.setOutput('x64_url', x64Dmg.browser_download_url);
 
       - name: Download DMGs and calculate checksums
+        id: checksums
         env:
           ARM64_URL: ${{ steps.release.outputs.arm64_url }}
           X64_URL: ${{ steps.release.outputs.x64_url }}
@@ -48,14 +49,8 @@ jobs:
           ARM64_SHA=$(shasum -a 256 arm64.dmg | cut -d ' ' -f 1)
           X64_SHA=$(shasum -a 256 x64.dmg | cut -d ' ' -f 1)
 
-          echo "arm64_sha=$ARM64_SHA" >> $GITHUB_OUTPUT
-        id: checksums
-
-      - name: Calculate x64 checksum
-        run: |
-          X64_SHA=$(shasum -a 256 x64.dmg | cut -d ' ' -f 1)
-          echo "x64_sha=$X64_SHA" >> $GITHUB_OUTPUT
-        id: x64_checksum
+          echo "arm64_sha=$ARM64_SHA" >> "$GITHUB_OUTPUT"
+          echo "x64_sha=$X64_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
@@ -68,7 +63,7 @@ jobs:
         env:
           VERSION: ${{ steps.release.outputs.version }}
           ARM64_SHA: ${{ steps.checksums.outputs.arm64_sha }}
-          X64_SHA: ${{ steps.x64_checksum.outputs.x64_sha }}
+          X64_SHA: ${{ steps.checksums.outputs.x64_sha }}
           ARM64_URL: ${{ steps.release.outputs.arm64_url }}
           X64_URL: ${{ steps.release.outputs.x64_url }}
         run: |

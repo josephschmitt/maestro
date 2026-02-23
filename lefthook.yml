@@ -1,0 +1,21 @@
+# Lefthook git hooks configuration
+# https://github.com/evilmartians/lefthook
+
+pre-push:
+  parallel: true
+  commands:
+    lint:
+      run: npm run lint
+
+    typecheck:
+      run: npm run check
+
+    test:
+      run: npm run test -- --run
+
+    actionlint:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: actionlint {staged_files}
+      skip:
+        - merge
+        - rebase

@@ -3,17 +3,22 @@
   "packages": [
     "nodejs@latest",
     "rustup@latest",
-    "pkg-config@latest"
+    "pkg-config@latest",
+    "actionlint@latest",
+    "lefthook@latest"
   ],
   "shell": {
     "init_hook": [
       "rustup toolchain install stable --no-self-update 2>/dev/null",
-      "rustup default stable 2>/dev/null"
+      "rustup default stable 2>/dev/null",
+      "lefthook install --force 2>/dev/null || true"
     ],
     "scripts": {
       "dev": "npm run tauri dev",
       "build": "npm run tauri build",
-      "test": "npm run test"
+      "test": "npm run test",
+      "lint": "npm run lint && npm run check",
+      "validate": "npm run lint && npm run check && npm run test -- --run"
     }
   }
 }

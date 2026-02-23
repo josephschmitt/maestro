@@ -22,7 +22,9 @@ curl -fsSL https://get.jetify.com/devbox | bash
 devbox shell
 ```
 
-This automatically installs Node.js, Rust, and pkg-config.
+This automatically installs Node.js, Rust, pkg-config, and dev tools (actionlint, lefthook).
+
+**Git hooks are installed automatically** via lefthook when you enter the devbox shell.
 
 ### Manual Setup
 
@@ -106,6 +108,19 @@ Tests use Vitest. Test files live alongside source files with `*.test.ts` naming
 cd src-tauri
 cargo test
 ```
+
+### Pre-Push Hooks
+
+When using devbox, **lefthook** runs automatic checks before each push:
+
+- `npm run lint` — ESLint
+- `npm run check` — TypeScript/Svelte type checking
+- `npm run test -- --run` — Vitest tests
+- `actionlint` — GitHub Actions workflow validation (when workflow files change)
+
+All checks run in parallel. If any fail, the push is blocked.
+
+To skip hooks in emergencies: `git push --no-verify`
 
 ### Manual Testing Checklist
 
