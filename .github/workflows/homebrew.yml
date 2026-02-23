@@ -27,7 +27,7 @@ jobs:
             const version = release.data.tag_name.replace(/^(maestro-)?v/, '');
             const assets = release.data.assets;
 
-            const arm64Dmg = assets.find(a => a.name.includes('arm64') && a.name.endsWith('.dmg'));
+            const arm64Dmg = assets.find(a => a.name.includes('aarch64') && a.name.endsWith('.dmg'));
             const x64Dmg = assets.find(a => a.name.includes('x64') && a.name.endsWith('.dmg'));
 
             if (!arm64Dmg || !x64Dmg) {
