@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/josephschmitt/maestro/compare/maestro-v0.1.0...maestro-v0.1.1) (2026-02-23)
+
+
+### Bug Fixes
+
+* **ci:** merge release-please into release workflow to fix trigger ([84c7fb3](https://github.com/josephschmitt/maestro/commit/84c7fb347ef72707aa6d2860602172db14187a23))
+
 ## [0.1.0](https://github.com/josephschmitt/maestro/compare/maestro-v0.0.1...maestro-v0.1.0) (2026-02-23)
 
 
