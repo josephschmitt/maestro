@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AgentOutputLine } from '$lib/stores/agent.js';
 	import { parseAnsi } from '$lib/utils/ansi-parser.js';
+	import AnimatedSpinner from '$lib/components/ui/animated-spinner.svelte';
 
 	let {
 		lines
@@ -30,7 +31,7 @@
 	tabindex={-1}
 >
 	{#if lines.length === 0}
-		<span class="text-muted-foreground">Waiting for output...</span>
+		<AnimatedSpinner context="coding" />
 	{:else}
 		{#each lines as line, i (i)}
 			<div class={line.stream === 'stderr' ? 'text-red-400' : ''}>

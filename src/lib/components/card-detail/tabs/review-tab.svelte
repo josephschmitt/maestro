@@ -17,7 +17,7 @@
 	import ReviewActions from '$lib/components/review/review-actions.svelte';
 	import ReviewConversation from '$lib/components/review/review-conversation.svelte';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import AnimatedSpinner from '$lib/components/ui/animated-spinner.svelte';
 
 	let {
 		cardId,
@@ -51,9 +51,8 @@
 
 <div class="flex flex-col gap-4">
 	{#if $reviewLoading && $changedFiles.length === 0}
-		<div class="flex items-center justify-center gap-2 py-8">
-			<LoaderIcon size={16} class="animate-spin text-muted-foreground" />
-			<span class="text-sm text-muted-foreground">Loading changes...</span>
+		<div class="flex items-center justify-center py-8">
+			<AnimatedSpinner context="reviewing" />
 		</div>
 	{:else if $reviewError && $changedFiles.length === 0}
 		<div class="py-4 text-center">
