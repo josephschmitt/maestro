@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Rich prompt input** - Paste compression for long text into visual chips, file drag-and-drop onto message input, input history with arrow key navigation, and character/token count feedback. ([JJS-95](https://linear.app/josephschmitt/issue/JJS-95/oc-3-rich-prompt-input), [#48](https://github.com/josephschmitt/maestro/pull/48))
+
 ## [0.1.1](https://github.com/josephschmitt/maestro/compare/maestro-v0.1.0...maestro-v0.1.1) (2026-02-23)
 
 
