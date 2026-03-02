@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/josephschmitt/maestro/compare/maestro-v0.1.1...maestro-v0.2.0) (2026-03-02)
+
+
+### Features
+
+* rich prompt input with paste compression, drag-drop, history, and char count ([#48](https://github.com/josephschmitt/maestro/issues/48)) ([ad4116d](https://github.com/josephschmitt/maestro/commit/ad4116d48f902bd3fad7ff59fb2b0d51073f6f0d))
+* streaming-optimized markdown rendering with syntax highlighting ([#46](https://github.com/josephschmitt/maestro/issues/46)) ([bcb3c62](https://github.com/josephschmitt/maestro/commit/bcb3c626df04f1795b56a0b010faa8be41ecc392))
+* whimsical animated loading states with rotating verbs ([#47](https://github.com/josephschmitt/maestro/issues/47)) ([c03f4ba](https://github.com/josephschmitt/maestro/commit/c03f4ba46f875f9fbc918a37727aeb7c8ca9a82c))
+
+
+### Bug Fixes
+
+* **ci:** match Tauri's aarch64 DMG naming in homebrew workflow ([2b5bd68](https://github.com/josephschmitt/maestro/commit/2b5bd68686b612df88185eaa38c3e0ea0bc283e7))
+
 ## [Unreleased]
 
 ### Added
