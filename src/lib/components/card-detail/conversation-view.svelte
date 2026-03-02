@@ -8,6 +8,7 @@
 	import MessageBubble from './message-bubble.svelte';
 	import MessageInput from './message-input.svelte';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import AnimatedSpinner from '$lib/components/ui/animated-spinner.svelte';
 
 	let {
 		conversation,
@@ -63,6 +64,11 @@
 				{#each $messages as msg (msg.id)}
 					<MessageBubble message={msg} />
 				{/each}
+				{#if $messages.length > 0 && $messages[$messages.length - 1].role === 'user'}
+					<div class="flex justify-start px-2 py-1">
+						<AnimatedSpinner context="thinking" />
+					</div>
+				{/if}
 			</div>
 		{:else}
 			<div class="flex h-full items-center justify-center">
