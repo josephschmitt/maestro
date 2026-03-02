@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AgentOutputLine } from '$lib/stores/agent.js';
+	import { parseAnsi } from '$lib/utils/ansi-parser.js';
 
 	let {
 		lines
@@ -15,6 +16,10 @@
 			terminalEl.scrollTop = terminalEl.scrollHeight;
 		}
 	});
+
+	function renderLine(line: string): string {
+		return parseAnsi(line);
+	}
 </script>
 
 <div
@@ -29,7 +34,7 @@
 	{:else}
 		{#each lines as line, i (i)}
 			<div class={line.stream === 'stderr' ? 'text-red-400' : ''}>
-				{line.line}
+				{@html renderLine(line.line)}
 			</div>
 		{/each}
 	{/if}
