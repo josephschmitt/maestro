@@ -15,7 +15,7 @@ import {
 import { connectAgentStream, type AgentStreamConnection } from '$lib/services/agent-ws.js';
 import { listenEvent } from '$lib/services/events.js';
 import { currentProject } from './project.js';
-import { parseToolEvent, type ToolEvent } from '$lib/utils/tool-parser.js';
+import { parseToolEvent, isToolEventLine, type ToolEvent } from '$lib/utils/tool-parser.js';
 
 export type { AgentOutputLine };
 
@@ -23,6 +23,7 @@ export const workspaces = writable<AgentWorkspace[]>([]);
 export const activeWorkspaceId = writable<string | null>(null);
 export const agentOutput = writable<Map<string, AgentOutputLine[]>>(new Map());
 export const toolInvocations = writable<Map<string, Map<string, ToolInvocation>>>(new Map());
+const toolEventLineIndices = new Map<string, Set<number>>();
 
 const agentConnections = new Map<string, AgentStreamConnection>();
 
@@ -51,36 +52,44 @@ export const activeToolInvocations = derived(
 );
 
 export const activeTimeline = derived(
-	[activeOutput, activeToolInvocations],
-	([$activeOutput, $activeToolInvocations]) => {
-		return buildTimeline($activeOutput, $activeToolInvocations);
+	[activeOutput, activeToolInvocations, activeWorkspaceId],
+	([$activeOutput, $activeToolInvocations, $activeWorkspaceId]) => {
+		const indices = $activeWorkspaceId ? toolEventLineIndices.get($activeWorkspaceId) : undefined;
+		return buildTimeline($activeOutput, $activeToolInvocations, indices);
 	}
 );
 
 export function buildTimeline(
 	lines: AgentOutputLine[],
-	tools: Map<string, ToolInvocation>
+	tools: Map<string, ToolInvocation>,
+	toolLineIndices?: Set<number>
 ): TimelineEntry[] {
 	if (lines.length === 0 && tools.size === 0) return [];
 
 	const entries: TimelineEntry[] = [];
 	let currentTextBlock: AgentOutputLine[] = [];
+	const emittedToolIds = new Set<string>();
 
-	for (const line of lines) {
-		const event = parseToolEvent(line.line);
-		if (event) {
-			const tool = tools.get(event.id);
-			if (tool) {
-				if (currentTextBlock.length > 0) {
-					entries.push({ type: 'text', lines: [...currentTextBlock] });
-					currentTextBlock = [];
-				}
-				if (event.type === 'tool_start' || !entries.some(e => e.type === 'tool' && e.invocation.id === tool.id)) {
+	for (let i = 0; i < lines.length; i++) {
+		const isToolLine = toolLineIndices
+			? toolLineIndices.has(i)
+			: isToolEventLine(lines[i].line);
+
+		if (isToolLine) {
+			const event = parseToolEvent(lines[i].line);
+			if (event) {
+				const tool = tools.get(event.id);
+				if (tool && !emittedToolIds.has(tool.id)) {
+					if (currentTextBlock.length > 0) {
+						entries.push({ type: 'text', lines: [...currentTextBlock] });
+						currentTextBlock = [];
+					}
+					emittedToolIds.add(tool.id);
 					entries.push({ type: 'tool', invocation: tool });
 				}
 			}
 		} else {
-			currentTextBlock.push(line);
+			currentTextBlock.push(lines[i]);
 		}
 	}
 
@@ -213,7 +222,18 @@ function listenForOutput(workspaceId: string): void {
 
 			agentOutput.update((m) => {
 				const lines = m.get(workspaceId) ?? [];
+				const lineIndex = lines.length;
 				lines.push(event);
+
+				if (toolEvent) {
+					let indices = toolEventLineIndices.get(workspaceId);
+					if (!indices) {
+						indices = new Set<number>();
+						toolEventLineIndices.set(workspaceId, indices);
+					}
+					indices.add(lineIndex);
+				}
+
 				m.set(workspaceId, [...lines]);
 				return new Map(m);
 			});
@@ -237,6 +257,15 @@ function cleanupListener(workspaceId: string): void {
 		connection.disconnect();
 		agentConnections.delete(workspaceId);
 	}
+	agentOutput.update((m) => {
+		m.delete(workspaceId);
+		return new Map(m);
+	});
+	toolInvocations.update((m) => {
+		m.delete(workspaceId);
+		return new Map(m);
+	});
+	toolEventLineIndices.delete(workspaceId);
 }
 
 export function cleanupAllListeners(): void {
@@ -244,6 +273,9 @@ export function cleanupAllListeners(): void {
 		connection.disconnect();
 	}
 	agentConnections.clear();
+	agentOutput.set(new Map());
+	toolInvocations.set(new Map());
+	toolEventLineIndices.clear();
 }
 
 listenEvent<{ project_id: string }>('workspaces-changed', (payload) => {
