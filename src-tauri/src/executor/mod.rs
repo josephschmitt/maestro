@@ -4,6 +4,7 @@ pub mod monitor;
 pub mod reattach;
 pub mod spawn;
 pub mod stream;
+pub mod tool_parser;
 
 use std::collections::HashMap;
 use std::sync::Mutex;

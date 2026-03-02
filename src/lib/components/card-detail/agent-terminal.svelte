@@ -1,42 +1,37 @@
 <script lang="ts">
-	import type { AgentOutputLine } from '$lib/stores/agent.js';
-	import { parseAnsi } from '$lib/utils/ansi-parser.js';
+	import type { AgentOutputLine, TimelineEntry } from '$lib/types/index.js';
 	import AnimatedSpinner from '$lib/components/ui/animated-spinner.svelte';
+	import AgentOutputTimeline from './agent-output-timeline.svelte';
 
 	let {
-		lines
+		lines,
+		timeline = [],
+		streaming = false
 	}: {
 		lines: AgentOutputLine[];
+		timeline?: TimelineEntry[];
+		streaming?: boolean;
 	} = $props();
 
-	let terminalEl: HTMLDivElement | undefined = $state();
-
-	$effect(() => {
-		void lines;
-		if (terminalEl) {
-			terminalEl.scrollTop = terminalEl.scrollHeight;
-		}
-	});
-
-	function renderLine(line: string): string {
-		return parseAnsi(line);
-	}
+	const hasTimeline = $derived(timeline.length > 0);
 </script>
 
 <div
-	bind:this={terminalEl}
-	class="h-full overflow-y-auto rounded-md border border-border bg-black p-3 font-mono text-xs leading-relaxed text-green-400"
+	class="h-full overflow-hidden rounded-md border border-border bg-black"
 	role="log"
 	aria-label="Agent output"
 	tabindex={-1}
 >
-	{#if lines.length === 0}
-		<AnimatedSpinner context="coding" />
+	{#if lines.length === 0 && timeline.length === 0}
+		<div class="flex h-full items-center justify-center p-3">
+			<AnimatedSpinner context="coding" />
+		</div>
+	{:else if hasTimeline}
+		<AgentOutputTimeline entries={timeline} {streaming} />
 	{:else}
-		{#each lines as line, i (i)}
-			<div class={line.stream === 'stderr' ? 'text-red-400' : ''}>
-				{@html renderLine(line.line)}
-			</div>
-		{/each}
+		<AgentOutputTimeline
+			entries={[{ type: 'text', lines }]}
+			{streaming}
+		/>
 	{/if}
 </div>

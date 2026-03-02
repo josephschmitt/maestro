@@ -1,5 +1,5 @@
 import { getTransportMode, getWebSocketUrl, type TransportMode } from './db.js';
-import type { AgentOutputLine } from '$lib/stores/agent.js';
+import type { AgentOutputLine } from '$lib/types/index.js';
 
 export interface AgentOutputEvent {
 	stream: 'stdout' | 'stderr';
