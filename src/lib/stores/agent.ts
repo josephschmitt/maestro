@@ -65,7 +65,6 @@ export function buildTimeline(
 
 	const entries: TimelineEntry[] = [];
 	let currentTextBlock: AgentOutputLine[] = [];
-	const toolsByLine = new Map<number, ToolInvocation>();
 
 	for (const line of lines) {
 		const event = parseToolEvent(line.line);

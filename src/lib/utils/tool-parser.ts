@@ -15,9 +15,6 @@ export interface ToolEndEvent {
 
 export type ToolEvent = ToolStartEvent | ToolEndEvent;
 
-const TOOL_START_PREFIX = '{"maestro_tool":"start"';
-const TOOL_END_PREFIX = '{"maestro_tool":"end"';
-
 export function parseToolEvent(line: string): ToolEvent | null {
 	const trimmed = line.trim();
 	if (!trimmed.startsWith('{')) return null;
