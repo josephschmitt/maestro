@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 
 use serde::{Deserialize, Serialize};
 
+use super::tool_parser::{parse_tool_line, ParsedToolEvent, ToolStartEvent, ToolEndEvent};
 use super::{AgentEvent, EventBus, MaestroEvent};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,6 +37,42 @@ pub fn start_stdout_streaming_inner(
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
+            if let Some(tool_event) = parse_tool_line(&line) {
+                match tool_event {
+                    ParsedToolEvent::Start { id, tool_name, input_summary } => {
+                        let te = ToolStartEvent {
+                            workspace_id: workspace_id.clone(),
+                            id,
+                            tool_name,
+                            input_summary,
+                        };
+                        if let Some(ref handle) = app {
+                            let _ = handle.emit(
+                                &format!("agent-tool-start-{}", workspace_id),
+                                &te,
+                            );
+                        }
+                    }
+                    ParsedToolEvent::End { id, output_preview, output_full, error } => {
+                        let te = ToolEndEvent {
+                            workspace_id: workspace_id.clone(),
+                            id,
+                            status: if error.is_some() { "failed".to_string() } else { "completed".to_string() },
+                            output_preview,
+                            output_full,
+                            error,
+                            duration_ms: None,
+                        };
+                        if let Some(ref handle) = app {
+                            let _ = handle.emit(
+                                &format!("agent-tool-end-{}", workspace_id),
+                                &te,
+                            );
+                        }
+                    }
+                }
+            }
+
             let event = AgentOutputEvent {
                 workspace_id: workspace_id.clone(),
                 stream: "stdout".to_string(),

@@ -4,6 +4,7 @@
 		activeWorkspaceId,
 		activeWorkspace,
 		activeOutput,
+		activeTimeline,
 		loadWorkspaces,
 		startAgent,
 		stopCurrentAgent,
@@ -102,7 +103,11 @@
 		</div>
 
 		<div class="min-h-0 flex-1">
-			<AgentTerminal lines={$activeOutput} />
+			<AgentTerminal
+				lines={$activeOutput}
+				timeline={$activeTimeline}
+				streaming={$activeWorkspace.status === 'running'}
+			/>
 		</div>
 
 		<AgentControls

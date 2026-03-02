@@ -196,3 +196,27 @@ export interface HttpServerConfigUpdate {
 	port?: number;
 	bind_address?: string;
 }
+
+export type ToolInvocationStatus = 'running' | 'completed' | 'failed';
+
+export interface ToolInvocation {
+	id: string;
+	tool_name: string;
+	status: ToolInvocationStatus;
+	started_at: string;
+	completed_at?: string;
+	duration_ms?: number;
+	input_summary: string;
+	output_preview?: string;
+	output_full?: string;
+	error?: string;
+}
+
+export interface AgentOutputLine {
+	stream: 'stdout' | 'stderr';
+	line: string;
+}
+
+export type TimelineEntry =
+	| { type: 'tool'; invocation: ToolInvocation }
+	| { type: 'text'; lines: AgentOutputLine[] };
