@@ -85,7 +85,7 @@ const verbs = {
 		'Wandering',
 		'Sparking',
 		'Remixing',
-		'Improvising'
+	]
 	],
 	technical: [
 		'Compiling',
